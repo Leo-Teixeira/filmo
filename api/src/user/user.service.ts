@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { isPrismaError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -19,19 +20,39 @@ export class UserService {
       select: publicUserFields,
     });
     // Valid token but deleted account.
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new UserNotFoundException();
     return user;
   }
 
-  updateMe(userId: string, dto: UpdateUserDto) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { displayName: dto.displayName },
-      select: publicUserFields,
-    });
+  async updateMe(userId: string, dto: UpdateUserDto) {
+    try {
+      return await this.prisma.user.update({
+        where: { id: userId },
+        data: { displayName: dto.displayName },
+        select: publicUserFields,
+      });
+    } catch (e) {
+      throw this.mapNotFound(e);
+    }
   }
 
   async removeMe(userId: string): Promise<void> {
-    await this.prisma.user.delete({ where: { id: userId } });
+    try {
+      await this.prisma.user.delete({ where: { id: userId } });
+    } catch (e) {
+      throw this.mapNotFound(e);
+    }
+  }
+
+  private mapNotFound(error: unknown): unknown {
+    return isPrismaError(error, PrismaErrorCode.RecordNotFound)
+      ? new UserNotFoundException()
+      : error;
+  }
+}
+
+class UserNotFoundException extends NotFoundException {
+  constructor() {
+    super('User not found');
   }
 }

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon from 'argon2';
-import { Prisma } from '../generated/prisma/client';
+import { isPrismaError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
@@ -34,10 +34,7 @@ export class AuthService {
       });
       return this.signToken(user.id);
     } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        e.code === 'P2002'
-      ) {
+      if (isPrismaError(e, PrismaErrorCode.UniqueConstraintViolation)) {
         throw new ConflictException('Email already in use');
       }
       throw e;
