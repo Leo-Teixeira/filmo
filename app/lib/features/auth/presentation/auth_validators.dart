@@ -13,7 +13,7 @@ abstract final class AuthValidators {
 
   static String? newPassword(String? value) {
     final v = value ?? '';
-    if (v.length < 8) return '8 caractères minimum.';
+    if (v.length < 9) return '9 caractères minimum.';
     if (v.length > 128) return '128 caractères maximum.';
     return null;
   }
