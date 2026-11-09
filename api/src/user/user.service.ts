@@ -17,26 +17,26 @@ export class UserService {
     return await this.prisma.user.findMany();
   };
 
-  findOne = async (id: string) => {
-    return await this.prisma.user.findUnique({ where: { id: id } });
+  findOne = async () => {
+    return await this.prisma.user.findUnique({ where: { id } });
   };
 
   findByEmail = async (email: string) => {
     return await this.prisma.user.findUnique({ where: { email } });
   };
 
-  update = async (id: string, updateUserDto: UpdateUserDto) => {
+  update = async (updateUserDto: UpdateUserDto) => {
     return await this.prisma.user.update({
       data: {
         displayName: updateUserDto.displayName,
         email: updateUserDto.email,
         passwordHash: await argon.hash(updateUserDto.password),
       },
-      where: { id: id },
+      where: { id: sub },
     });
   };
 
-  remove = async (id: string) => {
+  remove = async () => {
     return await this.prisma.user.delete({ where: { id } });
   };
 }
