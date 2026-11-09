@@ -1,10 +1,18 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { RegisterAuthDto } from './dto/register-auth.dto';
-import { LoginAuthDto } from './dto/login-auth.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon from 'argon2';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/wasm-compiler-edge';
+import { Prisma } from '../generated/prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { LoginAuthDto } from './dto/login-auth.dto';
+import { RegisterAuthDto } from './dto/register-auth.dto';
+
+export interface AuthTokens {
+  accessToken: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -13,38 +21,43 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async register(dto: RegisterAuthDto) {
+  async register(dto: RegisterAuthDto): Promise<AuthTokens> {
+    const passwordHash = await argon.hash(dto.password);
     try {
-      const hash = await argon.hash(dto.password);
       const user = await this.prisma.user.create({
         data: {
           email: dto.email,
-          passwordHash: hash,
+          passwordHash,
           displayName: dto.displayName,
         },
+        select: { id: true },
       });
       return this.signToken(user.id);
     } catch (e) {
-      if (e instanceof PrismaClientKnownRequestError) {
-        if (e.code === 'P2002') {
-          throw new UnauthorizedException('User already exists');
-        }
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        throw new ConflictException('Email already in use');
       }
       throw e;
     }
   }
 
-  async login(dto: LoginAuthDto) {
+  async login(dto: LoginAuthDto): Promise<AuthTokens> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      select: { id: true, passwordHash: true },
     });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    const isMatch = await argon.verify(user.passwordHash, dto.password);
-    if (!isMatch) throw new UnauthorizedException('Invalid credentials');
+    const isMatch =
+      user !== null && (await argon.verify(user.passwordHash, dto.password));
+    if (!user || !isMatch) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
     return this.signToken(user.id);
   }
 
-  private async signToken(sub: string) {
-    return { access_token: await this.jwt.signAsync({ sub }) };
+  private async signToken(userId: string): Promise<AuthTokens> {
+    return { accessToken: await this.jwt.signAsync({ sub: userId }) };
   }
 }

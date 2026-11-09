@@ -1,10 +1,12 @@
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
+// No MinLength here: password policy belongs to registration, not login.
 export class LoginAuthDto {
   @IsEmail()
   email: string;
+
   @IsString()
-  @MinLength(9)
+  @IsNotEmpty()
   @MaxLength(128)
   password: string;
 }

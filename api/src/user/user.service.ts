@@ -1,42 +1,37 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
-import * as argon from 'argon2';
-import { argon2 } from 'crypto';
+
+const publicUserFields = {
+  id: true,
+  email: true,
+  displayName: true,
+  createdAt: true,
+} as const;
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+  async findMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: publicUserFields,
+    });
+    // Valid token but deleted account.
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
-  findAll = async () => {
-    return await this.prisma.user.findMany();
-  };
-
-  findOne = async () => {
-    return await this.prisma.user.findUnique({ where: { id } });
-  };
-
-  findByEmail = async (email: string) => {
-    return await this.prisma.user.findUnique({ where: { email } });
-  };
-
-  update = async (updateUserDto: UpdateUserDto) => {
-    return await this.prisma.user.update({
-      data: {
-        displayName: updateUserDto.displayName,
-        email: updateUserDto.email,
-        passwordHash: await argon.hash(updateUserDto.password),
-      },
-      where: { id: sub },
+  updateMe(userId: string, dto: UpdateUserDto) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { displayName: dto.displayName },
+      select: publicUserFields,
     });
-  };
+  }
 
-  remove = async () => {
-    return await this.prisma.user.delete({ where: { id } });
-  };
+  async removeMe(userId: string): Promise<void> {
+    await this.prisma.user.delete({ where: { id: userId } });
+  }
 }
