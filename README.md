@@ -16,3 +16,4 @@ pnpm install && pnpm db:migrate && pnpm db:generate && pnpm start:dev
 cd ../app && flutter pub get && dart run build_runner build && flutter run
 # Android emulator: flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
 ```
+# filmo
