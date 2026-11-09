@@ -1,0 +1,120 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TitleType {
+  MOVIE
+  TV
+}
+
+enum WatchStatus {
+  WANT_TO_WATCH
+  WATCHING
+  COMPLETED
+  DROPPED
+}
+
+enum HouseholdRole {
+  OWNER
+  MEMBER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime @default(now())
+
+  titles          UserTitle[]
+  memberships     HouseholdMember[]
+  collectionItems CollectionItem[]
+}
+
+// Local cache of external metadata (TMDB today, other providers later).
+model Title {
+  id          String    @id @default(uuid())
+  provider    String
+  externalId  String
+  type        TitleType
+  isAnime     Boolean   @default(false)
+  title       String
+  overview    String?
+  posterPath  String?
+  releaseDate DateTime?
+  cachedAt    DateTime  @default(now())
+
+  userTitles      UserTitle[]
+  collectionItems CollectionItem[]
+
+  @@unique([provider, externalId])
+}
+
+model UserTitle {
+  userId    String
+  titleId   String
+  status    WatchStatus
+  rating    Int?
+  watchedAt DateTime?
+  updatedAt DateTime    @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, titleId])
+  @@index([userId, status])
+}
+
+model Household {
+  id         String   @id @default(uuid())
+  name       String
+  inviteCode String   @unique
+  createdAt  DateTime @default(now())
+
+  members     HouseholdMember[]
+  collections Collection[]
+}
+
+model HouseholdMember {
+  householdId String
+  userId      String
+  role        HouseholdRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, userId])
+  @@index([userId])
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  name        String
+  householdId String
+  createdAt   DateTime @default(now())
+
+  household Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  items     CollectionItem[]
+
+  @@index([householdId])
+}
+
+model CollectionItem {
+  collectionId String
+  titleId      String
+  addedById    String
+  addedAt      DateTime @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  title      Title      @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  addedBy    User       @relation(fields: [addedById], references: [id])
+
+  @@id([collectionId, titleId])
+}
