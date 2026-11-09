@@ -27,7 +27,8 @@ class AuthRepository {
     'displayName': displayName,
   });
 
-  /// Returns null when there is no session or the stored token was rejected.
+  /// Returns null when there is no session, the token was rejected, or the
+  /// account no longer exists.
   Future<User?> currentUser() async {
     final token = await _tokenStorage.readAccessToken();
     if (token == null) return null;
@@ -35,7 +36,8 @@ class AuthRepository {
       final response = await _dio.get<Map<String, dynamic>>('/me');
       return User.fromJson(response.data!);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 404) {
         await _tokenStorage.clear();
         return null;
       }

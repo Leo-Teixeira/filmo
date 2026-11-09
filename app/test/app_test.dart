@@ -6,16 +6,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const _user = User(id: '1', email: 'leo@filmo.local', displayName: 'Léo');
+
 class FakeAuthRepository implements AuthRepository {
+  FakeAuthRepository({User? session, this.meFails = false})
+    : _session = session;
+
   User? _session;
-  static const _user = User(
-    id: '1',
-    email: 'leo@filmo.local',
-    displayName: 'Léo',
-  );
+  final bool meFails;
+  bool loggedOut = false;
 
   @override
-  Future<User?> currentUser() async => _session;
+  Future<User?> currentUser() async {
+    if (meFails && _session != null) {
+      throw const AuthException('API injoignable.');
+    }
+    return _session;
+  }
 
   @override
   Future<void> login({required String email, required String password}) async {
@@ -33,7 +40,10 @@ class FakeAuthRepository implements AuthRepository {
   }) async => _session = _user;
 
   @override
-  Future<void> logout() async => _session = null;
+  Future<void> logout() async {
+    loggedOut = true;
+    _session = null;
+  }
 }
 
 Future<void> pumpApp(WidgetTester tester, FakeAuthRepository repo) async {
@@ -86,6 +96,25 @@ void main() {
     await fillLogin(tester, 'wrong-password');
 
     expect(find.text('Email ou mot de passe incorrect.'), findsOneWidget);
+    expect(find.text('Bonjour Léo'), findsNothing);
+  });
+
+  testWidgets('existing session opens straight on home', (tester) async {
+    await pumpApp(tester, FakeAuthRepository(session: _user));
+
+    expect(find.text('Bonjour Léo'), findsOneWidget);
+  });
+
+  testWidgets('drops the stored token when /me fails right after login', (
+    tester,
+  ) async {
+    final repo = FakeAuthRepository(meFails: true);
+    await pumpApp(tester, repo);
+
+    await fillLogin(tester, 'password123');
+
+    expect(find.text('API injoignable.'), findsOneWidget);
+    expect(repo.loggedOut, isTrue);
     expect(find.text('Bonjour Léo'), findsNothing);
   });
 }
