@@ -6,14 +6,13 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/titles/presentation/search_screen.dart';
+import '../../features/titles/presentation/title_detail_screen.dart';
+import 'app_routes.dart';
+
+export 'app_routes.dart';
 
 part 'app_router.g.dart';
-
-abstract final class AppRoutes {
-  static const splash = '/splash';
-  static const auth = '/auth';
-  static const home = '/';
-}
 
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
@@ -51,6 +50,17 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: AppRoutes.home,
         builder: (context, state) => const HomeScreen(),
+      ),
+      // Both routes sit behind the redirect above: signed-out users are sent to /auth.
+      GoRoute(
+        path: AppRoutes.search,
+        builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.titleDetailPattern,
+        // The id comes from the URL; the screen loads the title itself (deep-link friendly).
+        builder: (context, state) =>
+            TitleDetailScreen(id: state.pathParameters['id']!),
       ),
     ],
   );
