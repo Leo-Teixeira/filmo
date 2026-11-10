@@ -4,6 +4,7 @@ import { APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { LibraryModule } from './library/library.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { TitlesModule } from './titles/titles.module';
@@ -15,6 +16,7 @@ import { TitlesModule } from './titles/titles.module';
     AuthModule,
     UserModule,
     TitlesModule,
+    LibraryModule,
   ],
   controllers: [AppController],
   providers: [
