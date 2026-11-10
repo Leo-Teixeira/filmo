@@ -1,27 +1,11 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateUserDto } from './create-user.dto';
-import {
-  IsEmail,
-  IsOptional,
-  IsString,
-  Length,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsOptional, IsString, Length } from 'class-validator';
+import { Trim } from '../../common/transformers';
 
+// Email and password changes need a dedicated flow that re-checks the current password.
 export class UpdateUserDto {
+  @IsOptional()
+  @Trim()
   @IsString()
   @Length(1, 50)
-  @IsOptional()
-  displayName: string;
-
-  @IsEmail()
-  @IsOptional()
-  email: string;
-
-  @IsString()
-  @MinLength(9)
-  @MaxLength(128)
-  @IsOptional()
-  password: string;
+  displayName?: string;
 }
