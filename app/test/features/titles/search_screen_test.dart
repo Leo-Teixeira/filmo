@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:filmo/core/network/api_failure.dart';
 import 'package:filmo/core/router/app_routes.dart';
+import 'package:filmo/features/library/data/library_repository.dart';
 import 'package:filmo/features/titles/data/titles_repository.dart';
 import 'package:filmo/features/titles/domain/media_title.dart';
 import 'package:filmo/features/titles/presentation/search_screen.dart';
@@ -9,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../helpers/fake_library_repository.dart';
 
 final _dune = MediaTitle(
   id: 'dune-uuid',
@@ -55,7 +58,11 @@ Future<void> pumpSearch(WidgetTester tester, FakeTitlesRepository repo) async {
   );
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [titlesRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        titlesRepositoryProvider.overrideWithValue(repo),
+        // The detail screen embeds LibrarySection: without this override it would call the real API.
+        libraryRepositoryProvider.overrideWithValue(FakeLibraryRepository()),
+      ],
       child: MaterialApp.router(routerConfig: router),
     ),
   );

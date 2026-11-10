@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_failure.dart';
+import '../../library/presentation/library_section.dart';
 import '../domain/media_title.dart';
 import 'title_detail_provider.dart';
 import 'widgets/poster.dart';
@@ -68,6 +69,8 @@ class _Details extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 20),
+        LibrarySection(title: title),
         const SizedBox(height: 20),
         Text(title.overview ?? 'Pas de synopsis disponible.'),
         const TmdbAttribution(),
