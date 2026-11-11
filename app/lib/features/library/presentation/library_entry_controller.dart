@@ -49,6 +49,8 @@ class LibraryEntryController extends _$LibraryEntryController {
     required WatchStatus status,
     int? rating,
   }) => _exclusive(() async {
+    final previous = state;
+    state = AsyncData(state.value?.copyWith(status: status, rating: rating));
     // TODO(Léo) — DÉFI 3 : mise à jour optimiste + rollback.
     // Aujourd'hui l'UI attend la réponse du serveur (~200 ms) avant de bouger : ça "lag".
     // À faire :

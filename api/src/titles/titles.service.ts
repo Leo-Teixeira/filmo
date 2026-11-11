@@ -32,18 +32,15 @@ export class TitlesService {
   async findOne(id: string): Promise<Title> {
     const title = await this.prisma.title.findUnique({ where: { id } });
     if (!title) throw new TitleNotFoundException();
-
-    // TODO(Léo) — DÉFI 1 : rafraîchir le cache.
-    // Aujourd'hui on renvoie toujours la copie locale, même si elle a 2 ans.
-    // À faire :
-    //   1. Si Date.now() - title.cachedAt.getTime() < CACHE_TTL_MS → renvoyer `title` tel quel (frais).
-    //   2. Sinon → this.metadata.getDetails(title.type, title.externalId),
-    //      puis sauvegarder avec this.upsertFromProvider(fresh) et renvoyer le résultat.
-    //   3. Si le provider lève une erreur (TMDB en panne, 502/504) → logger un warn et renvoyer `title`
-    //      (la vieille copie vaut mieux qu'une erreur). Attention : une 404 TMDB = titre supprimé chez eux,
-    //      à toi de décider si on renvoie quand même la copie (moi je dirais oui).
-    // Les tests correspondants sont écrits dans titles.service.spec.ts avec it.skip : enlève le .skip.
-    return title;
+    if (Date.now() - title.cachedAt.getTime() == CACHE_TTL_MS) {
+      return title;
+    }
+    const fresh = await this.metadata.getDetails(title.type, title.externalId);
+    if (!fresh) {
+      console.warn(`Title ${id} not found in provider`);
+      return title;
+    }
+    return this.upsertFromProvider(fresh);
   }
 
   // Shared by search() and (soon) the refresh in findOne(): one place that knows how to write a provider title.
