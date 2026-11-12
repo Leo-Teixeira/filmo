@@ -82,23 +82,28 @@ void main() {
     expect(current()?.status, WatchStatus.watching);
   });
 
-  test(
-    'updates the state before the server answers (optimistic)',
-    () async {
-      await controller().setStatus(WatchStatus.watching, title: fakeTitle);
-      repo.pending = Completer<void>();
+  test('a failed first add rolls back to "not in my library"', () async {
+    repo.failure = const ApiOffline();
 
-      final saving = controller().setStatus(
-        WatchStatus.completed,
-        title: fakeTitle,
-      );
-      // Server hasn't answered yet, but the UI should already show "Vu".
-      expect(current()?.status, WatchStatus.completed);
+    await expectLater(
+      controller().setStatus(WatchStatus.watching, title: fakeTitle),
+      throwsA(isA<ApiOffline>()),
+    );
+    expect(current(), isNull);
+  });
 
-      repo.pending!.complete();
-      await saving;
-    },
-    // TODO(Léo) — DÉFI 3 : enlève `skip: true` quand _save() est optimiste.
-    skip: true,
-  );
+  test('updates the state before the server answers (optimistic)', () async {
+    await controller().setStatus(WatchStatus.watching, title: fakeTitle);
+    repo.pending = Completer<void>();
+
+    final saving = controller().setStatus(
+      WatchStatus.completed,
+      title: fakeTitle,
+    );
+    // Server hasn't answered yet, but the UI should already show "Vu".
+    expect(current()?.status, WatchStatus.completed);
+
+    repo.pending!.complete();
+    await saving;
+  });
 }
