@@ -103,23 +103,20 @@ void main() {
     expect(find.text('Erreur serveur (500).'), findsOneWidget);
   });
 
-  testWidgets(
-    'debounces fast typing: only the last query hits the API',
-    (tester) async {
-      final repo = FakeTitlesRepository();
-      await pumpSearch(tester, repo);
+  testWidgets('debounces fast typing: only the last query hits the API', (
+    tester,
+  ) async {
+    final repo = FakeTitlesRepository();
+    await pumpSearch(tester, repo);
 
-      // 3 keystrokes 100 ms apart, faster than the 350 ms debounce.
-      for (final text in ['du', 'dun', 'dune']) {
-        await tester.enterText(find.byType(TextField), text);
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pumpAndSettle();
+    // 3 keystrokes 100 ms apart, faster than the 350 ms debounce.
+    for (final text in ['du', 'dun', 'dune']) {
+      await tester.enterText(find.byType(TextField), text);
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
-      expect(repo.searches, ['dune']);
-    },
-    // TODO(Léo) — DÉFI 2 : enlève `skip: true` quand le debounce est en place.
-    skip: true,
-  );
+    expect(repo.searches, ['dune']);
+  });
 }
