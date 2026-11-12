@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/router/app_routes.dart';
 
 import '../../auth/presentation/auth_controller.dart';
 
@@ -15,6 +18,11 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Filmo'),
         actions: [
+          IconButton(
+            tooltip: 'Rechercher',
+            icon: const Icon(Icons.search),
+            onPressed: () => context.push(AppRoutes.search),
+          ),
           IconButton(
             tooltip: 'Se déconnecter',
             icon: const Icon(Icons.logout),

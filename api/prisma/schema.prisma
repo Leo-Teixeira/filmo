@@ -53,7 +53,7 @@ model Title {
   userTitles      UserTitle[]
   collectionItems CollectionItem[]
 
-  @@unique([provider, externalId])
+  @@unique([provider, type, externalId])
 }
 
 model UserTitle {
