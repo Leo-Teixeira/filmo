@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Title } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -12,6 +18,8 @@ export const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class TitlesService {
+  private readonly logger = new Logger(TitlesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     // @Inject(token) is mandatory here: the TS type "MetadataProvider" is erased at runtime, Nest only sees the Symbol.
@@ -32,18 +40,27 @@ export class TitlesService {
   async findOne(id: string): Promise<Title> {
     const title = await this.prisma.title.findUnique({ where: { id } });
     if (!title) throw new TitleNotFoundException();
-    if (Date.now() - title.cachedAt.getTime() == CACHE_TTL_MS) {
+    // `<`, not `==`: an age is never exactly the TTL to the millisecond.
+    if (Date.now() - title.cachedAt.getTime() < CACHE_TTL_MS) return title;
+
+    try {
+      const fresh = await this.metadata.getDetails(
+        title.type,
+        title.externalId,
+      );
+      return await this.upsertFromProvider(fresh);
+    } catch (error) {
+      // getDetails throws (504/502/404), it never returns null. A stale copy beats an error page.
+      const status =
+        error instanceof HttpException ? error.getStatus() : 'unknown';
+      this.logger.warn(
+        `Refresh failed for title ${id} (status ${status}), serving stale copy`,
+      );
       return title;
     }
-    const fresh = await this.metadata.getDetails(title.type, title.externalId);
-    if (!fresh) {
-      console.warn(`Title ${id} not found in provider`);
-      return title;
-    }
-    return this.upsertFromProvider(fresh);
   }
 
-  // Shared by search() and (soon) the refresh in findOne(): one place that knows how to write a provider title.
+  // Shared by search() and the refresh in findOne(): one place that knows how to write a provider title.
   // Resetting cachedAt here is correct: the data just came from the provider, so it IS fresh.
   private upsertFromProvider(title: ExternalTitle) {
     const provider = this.metadata.name;

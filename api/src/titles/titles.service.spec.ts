@@ -98,10 +98,9 @@ describe('TitlesService', () => {
       expect(getDetails).not.toHaveBeenCalled();
     });
 
-    // ---- DÉFI 1 (Léo) : enlève les .skip une fois findOne() complété ----
     const staleDate = () => new Date(Date.now() - CACHE_TTL_MS - 1000);
 
-    it.skip('refreshes a stale title from the provider and saves it', async () => {
+    it('refreshes a stale title from the provider and saves it', async () => {
       prisma.title.findUnique.mockResolvedValue(cachedRow(staleDate()));
       getDetails.mockResolvedValue({ ...dune, title: 'Dune (2021)' });
       prisma.title.upsert.mockResolvedValue({
@@ -115,7 +114,7 @@ describe('TitlesService', () => {
       expect(title.title).toBe('Dune (2021)');
     });
 
-    it.skip('serves the stale copy when the provider is down', async () => {
+    it('serves the stale copy when the provider is down', async () => {
       const stale = cachedRow(staleDate());
       prisma.title.findUnique.mockResolvedValue(stale);
       getDetails.mockRejectedValue(new Error('TMDB down'));
