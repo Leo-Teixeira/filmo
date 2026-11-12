@@ -16,7 +16,7 @@ part 'app_router.g.dart';
 
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
-  // Bridges Riverpod to go_router: re-run `redirect` whenever the session changes.
+  // Re-runs the redirect whenever the session changes.
   final refresh = ValueNotifier<int>(0);
   ref.listen(authControllerProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
@@ -51,14 +51,12 @@ GoRouter appRouter(Ref ref) {
         path: AppRoutes.home,
         builder: (context, state) => const HomeScreen(),
       ),
-      // Both routes sit behind the redirect above: signed-out users are sent to /auth.
       GoRoute(
         path: AppRoutes.search,
         builder: (context, state) => const SearchScreen(),
       ),
       GoRoute(
         path: AppRoutes.titleDetailPattern,
-        // The id comes from the URL; the screen loads the title itself (deep-link friendly).
         builder: (context, state) =>
             TitleDetailScreen(id: state.pathParameters['id']!),
       ),

@@ -12,8 +12,7 @@ class AuthController extends _$AuthController {
   @override
   Future<User?> build() => ref.read(authRepositoryProvider).currentUser();
 
-  // Errors are rethrown to the form instead of being stored in `state`, so a
-  // failed login doesn't turn the session into AsyncError and trigger a redirect.
+  // Errors are rethrown, not stored in state: an AsyncError would trigger a redirect.
   Future<void> login({required String email, required String password}) =>
       _authenticate((repo) => repo.login(email: email, password: password));
 
@@ -46,8 +45,7 @@ class AuthController extends _$AuthController {
       }
       state = AsyncData(user);
     } catch (_) {
-      // The token is stored but the session can't be loaded: drop it so the
-      // next app start doesn't silently sign the user in.
+      // Drop the token so the next start doesn't silently sign the user in.
       await repository.logout();
       rethrow;
     }

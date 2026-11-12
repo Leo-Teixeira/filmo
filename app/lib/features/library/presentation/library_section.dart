@@ -7,12 +7,10 @@ import '../domain/library_entry.dart';
 import '../domain/watch_status.dart';
 import 'library_entry_controller.dart';
 
-/// "My status" block shown on the title detail screen: status, rating, remove.
-/// Pure UI: every action goes through LibraryEntryController.
 class LibrarySection extends ConsumerWidget {
   const LibrarySection({super.key, required this.title});
 
-  /// The whole title (not just its id): setStatus needs it for the optimistic update (défi 3).
+  /// The whole title, not just its id: needed for the optimistic first add.
   final MediaTitle title;
 
   @override
@@ -38,7 +36,6 @@ class _Controls extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // .notifier = the controller object, to call its methods. read (not watch): we only call it in callbacks.
     final controller = ref.read(
       libraryEntryControllerProvider(title.id).notifier,
     );
@@ -56,14 +53,11 @@ class _Controls extends ConsumerWidget {
                 label: Text(status.label),
               ),
           ],
-          // Empty set = not in my library yet: no segment selected.
-          // `?expr` in a collection = null-aware element (Dart 3.8): adds nothing when expr is null.
           selected: {?current?.status},
           emptySelectionAllowed: true,
           showSelectedIcon: false,
           onSelectionChanged: (selection) {
-            // Tapping the already-selected segment gives an empty set: we ignore it
-            // (removing goes through the explicit "Retirer" button).
+            // Ignore deselecting: removing goes through the "Retirer" button.
             if (selection.isEmpty) return;
             _run(
               context,
@@ -100,23 +94,21 @@ class _Controls extends ConsumerWidget {
     );
   }
 
-  /// Runs an action and turns an ApiFailure into a SnackBar. The controller rethrows, the UI displays.
   Future<void> _run(
     BuildContext context,
     Future<void> Function() action,
   ) async {
-    // Grab the messenger BEFORE the await: using `context` after an async gap is unsafe (widget may be gone).
+    // Grab the messenger before the await: the widget may be gone after it.
     final messenger = ScaffoldMessenger.of(context);
     try {
       await action();
     } catch (error) {
-      // Catch everything (not only ApiFailure): an unexpected bug must still give feedback.
+      // Catch everything: an unexpected bug must still give feedback.
       messenger.showSnackBar(SnackBar(content: Text(userMessage(error))));
     }
   }
 }
 
-// Presentation concern, so it lives here and not in the domain enum (which stays Flutter-free).
 const _icons = {
   WatchStatus.wantToWatch: Icons.bookmark_border,
   WatchStatus.watching: Icons.play_circle_outline,
