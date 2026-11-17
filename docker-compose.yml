@@ -1,18 +1,56 @@
+
 services:
   db:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-filmo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-filmo_dev}
       POSTGRES_DB: ${POSTGRES_DB:-filmo}
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-filmo}"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-filmo} -d ${POSTGRES_DB:-filmo}
       interval: 5s
+      timeout: 5s
       retries: 10
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-filmo}:${POSTGRES_PASSWORD:-filmo_dev}@db:5432/${POSTGRES_DB:-filmo}?schema=public
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: migrate
+    profiles:
+      - tools
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-filmo}:${POSTGRES_PASSWORD:-filmo_dev}@db:5432/${POSTGRES_DB:-filmo}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   db-data:
