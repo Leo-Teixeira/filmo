@@ -38,7 +38,11 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://filmo:filmo_ci@localhost:5432/filmo?schema=public
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
+      TMDB_BASE_URL: ${{ secrets.TMDB_BASE_URL }}
+      PORT: 3000
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
