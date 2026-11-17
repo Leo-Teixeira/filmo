@@ -19,7 +19,6 @@ const dune: ExternalTitle = {
   releaseDate: new Date('2021-09-15'),
 };
 
-// A row as it would come out of the database.
 const cachedRow = (cachedAt: Date) => ({
   id: 'title-uuid',
   provider: 'fake',
@@ -30,8 +29,7 @@ const cachedRow = (cachedAt: Date) => ({
 describe('TitlesService', () => {
   let service: TitlesService;
 
-  // The whole point of the port: no HTTP, no TMDB, just an object that respects the contract.
-  // Standalone jest.fn() so expect(getDetails) doesn't trip the unbound-method lint rule.
+  // Standalone jest.fn() so expect(getDetails) doesn't trip the unbound-method rule.
   const search = jest.fn<Promise<ExternalTitle[]>, [string]>();
   const getDetails = jest.fn<Promise<ExternalTitle>, [TitleType, string]>();
   const metadata: MetadataProvider = { name: 'fake', search, getDetails };

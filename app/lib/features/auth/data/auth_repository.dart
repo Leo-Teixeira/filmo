@@ -27,8 +27,7 @@ class AuthRepository {
     'displayName': displayName,
   });
 
-  /// Returns null when there is no session, the token was rejected, or the
-  /// account no longer exists.
+  /// Null when signed out, when the token is rejected, or when the account is gone.
   Future<User?> currentUser() async {
     final token = await _tokenStorage.readAccessToken();
     if (token == null) return null;

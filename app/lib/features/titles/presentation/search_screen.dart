@@ -9,8 +9,6 @@ import 'title_search_provider.dart';
 import 'widgets/poster.dart';
 import 'widgets/tmdb_attribution.dart';
 
-/// ConsumerStatefulWidget: we need local state (the text being typed) AND Riverpod.
-/// The query lives here, in the widget, because it's pure UI state: nobody else needs it.
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -23,8 +21,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watching titleSearchProvider(_query): each new _query = a new family instance.
-    // The previous one is no longer watched, so Riverpod auto-disposes it.
     final results = ref.watch(titleSearchProvider(_query));
 
     return Scaffold(
@@ -32,18 +28,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         title: TextField(
           autofocus: true,
           textInputAction: TextInputAction.search,
-          // Same max as the API DTO: past 100 chars the API would answer 400.
+          // Same max as the API DTO.
           maxLength: 100,
           decoration: const InputDecoration(
             hintText: 'Film, série, animé…',
             border: InputBorder.none,
-            // Hides the "12/100" counter under the field.
             counterText: '',
           ),
           onChanged: (value) => setState(() => _query = value),
         ),
       ),
-      // `switch` on AsyncValue (sealed in Riverpod 3): loading / error / data, all three handled.
       body: switch (results) {
         AsyncData(:final value) => _Results(
           titles: value,
@@ -86,7 +80,7 @@ class _Results extends StatelessWidget {
           leading: Poster(path: title.posterPath, width: 40, size: 'w92'),
           title: Text(title.title),
           subtitle: Text(title.subtitle),
-          // push (not go): keeps the search in the back stack, so "back" returns to the results.
+          // push, not go: back returns to the results.
           onTap: () => context.push(AppRoutes.titleDetail(title.id)),
         );
       },

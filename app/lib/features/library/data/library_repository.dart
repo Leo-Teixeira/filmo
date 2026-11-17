@@ -8,15 +8,12 @@ import '../domain/watch_status.dart';
 
 part 'library_repository.g.dart';
 
-/// Talks to /library. No user id anywhere: the API reads it from the token
-/// that dioProvider's interceptor adds to every request.
 class LibraryRepository {
   LibraryRepository(this._dio);
 
   final Dio _dio;
 
-  /// Returns null when the title is not in my library (the API answers 404).
-  /// Here a 404 is a normal answer ("not added yet"), not an error to display.
+  /// Null when the title is not in my library (the API answers 404).
   Future<LibraryEntry?> find(String titleId) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(_path(titleId));
@@ -27,7 +24,7 @@ class LibraryRepository {
     }
   }
 
-  /// PUT = create or replace. [rating] null clears the rating on the server.
+  /// [rating] null clears the rating on the server.
   Future<LibraryEntry> save(
     String titleId, {
     required WatchStatus status,
@@ -44,7 +41,7 @@ class LibraryRepository {
     }
   }
 
-  /// Idempotent: removing an entry that is already gone (other device, double tap) is a success.
+  /// Idempotent: an entry that is already gone counts as removed.
   Future<void> remove(String titleId) async {
     try {
       await _dio.delete<void>(_path(titleId));
@@ -54,7 +51,7 @@ class LibraryRepository {
     }
   }
 
-  // Encoded: the id may come from a URL (deep link), it must never escape /library/.
+  // Encoded: the id may come from a deep link and must never escape /library/.
   String _path(String titleId) => '/library/${Uri.encodeComponent(titleId)}';
 }
 

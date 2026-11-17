@@ -55,7 +55,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           password: _password.text,
         );
       }
-      // On success the router redirects to home; nothing else to do here.
     } on AuthException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {

@@ -22,7 +22,7 @@ final _dune = MediaTitle(
   releaseDate: DateTime(2021, 9, 15),
 );
 
-/// Fake repository: no Dio, no network. Records every search so tests can count requests.
+/// Records every search so tests can count requests.
 class FakeTitlesRepository implements TitlesRepository {
   FakeTitlesRepository({this.failure});
 
@@ -43,7 +43,7 @@ class FakeTitlesRepository implements TitlesRepository {
   Future<MediaTitle> getById(String id) async => _dune;
 }
 
-/// Minimal app: just the two routes under test, without auth (the router redirect is tested in app_test.dart).
+/// Only the two routes under test; the auth redirect is covered in app_test.dart.
 Future<void> pumpSearch(WidgetTester tester, FakeTitlesRepository repo) async {
   final router = GoRouter(
     initialLocation: AppRoutes.search,

@@ -16,18 +16,16 @@ void main() {
   late FakeLibraryRepository repo;
   late ProviderContainer container;
 
-  // Shortcuts for the family instance under test.
   final provider = libraryEntryControllerProvider(_titleId);
   LibraryEntryController controller() => container.read(provider.notifier);
   LibraryEntry? current() => container.read(provider).value;
 
   setUp(() async {
     repo = FakeLibraryRepository();
-    // ProviderContainer.test disposes itself at the end of the test.
     container = ProviderContainer.test(
       overrides: [libraryRepositoryProvider.overrideWithValue(repo)],
     );
-    // Auto-dispose provider: without a listener it would be destroyed between two reads.
+    // Keeps the auto-dispose provider alive between reads.
     container.listen(provider, (_, _) {});
     await container.read(provider.future);
   });
