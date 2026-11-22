@@ -11,7 +11,7 @@ import { TitlesModule } from './titles/titles.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '../.env' }),
     PrismaModule,
     AuthModule,
     UserModule,

@@ -1,3 +1,5 @@
+import 'package:filmo/features/library/domain/watch_status.dart';
+import 'package:filmo/features/library/presentation/library_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -50,6 +52,11 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: AppRoutes.home,
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.libraryStatusPattern,
+        builder: (context, state) =>
+            LibraryScreen(status: state.pathParameters['status']!),
       ),
       GoRoute(
         path: AppRoutes.search,

@@ -13,6 +13,21 @@ class LibraryRepository {
 
   final Dio _dio;
 
+  Future<List<LibraryEntry>?> userLibrary(String? status) async {
+    try {
+      final response = await _dio.get<List<dynamic>>(
+        '/library',
+        queryParameters: status != null ? {'status': status} : null,
+      );
+      return response.data!
+          .map((res) => LibraryEntry.fromJson(res as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw ApiFailure.fromDio(e);
+    }
+  }
+
   /// Null when the title is not in my library (the API answers 404).
   Future<LibraryEntry?> find(String titleId) async {
     try {

@@ -5,7 +5,7 @@ import '../../../core/network/api_failure.dart';
 import '../../library/presentation/library_section.dart';
 import '../domain/media_title.dart';
 import 'title_detail_provider.dart';
-import 'widgets/poster.dart';
+import '../../common_widget/poster.dart';
 import 'widgets/tmdb_attribution.dart';
 
 class TitleDetailScreen extends ConsumerWidget {

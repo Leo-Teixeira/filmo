@@ -5,7 +5,9 @@ abstract final class AppRoutes {
   static const home = '/';
   static const search = '/search';
 
+  static const libraryStatusPattern = '/library/:status';
   static const titleDetailPattern = '/titles/:id';
 
   static String titleDetail(String id) => '/titles/$id';
+  static String libraryStatus(String status) => '/library/$status';
 }
