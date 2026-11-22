@@ -13,7 +13,7 @@ const fakeTitle = MediaTitle(
   title: 'Dune',
 );
 
-/// In-memory fake. `pending` lets a test freeze the server answer to look at the state in between.
+/// In-memory fake; `pending` freezes the server answer to inspect the state in between.
 class FakeLibraryRepository implements LibraryRepository {
   LibraryEntry? stored;
   ApiFailure? failure;

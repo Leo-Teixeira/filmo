@@ -11,10 +11,9 @@ import { of, throwError } from 'rxjs';
 import { TitleType } from '../../generated/prisma/enums';
 import { TmdbProvider } from './tmdb.provider';
 
-// Builds a fake axios response wrapped in an Observable, like HttpService.get would return.
 const ok = <T>(data: T) => of({ data, status: 200 } as AxiosResponse<T>);
 
-// Builds an AxiosError: with a status = TMDB answered with an error; without = network/timeout.
+// With a status: TMDB answered with an error. Without: network failure or timeout.
 const axiosError = (status?: number) => {
   const config = { headers: new AxiosHeaders() };
   const response = status

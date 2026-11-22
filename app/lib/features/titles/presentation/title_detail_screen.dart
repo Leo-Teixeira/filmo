@@ -8,8 +8,6 @@ import 'title_detail_provider.dart';
 import 'widgets/poster.dart';
 import 'widgets/tmdb_attribution.dart';
 
-/// Detail screen for /titles/:id. Receives only the id from the router:
-/// the data is (re)loaded from the API, so a deep link works without passing through search.
 class TitleDetailScreen extends ConsumerWidget {
   const TitleDetailScreen({super.key, required this.id});
 
@@ -46,7 +44,6 @@ class _Details extends StatelessWidget {
           children: [
             Poster(path: title.posterPath, width: 120),
             const SizedBox(width: 16),
-            // Expanded: without it, a long title overflows the Row instead of wrapping.
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/config/tmdb.dart';
 
-/// TMDB poster with a neutral placeholder. Shared by the search list and the detail screen.
 class Poster extends StatelessWidget {
   const Poster({
     super.key,
@@ -14,13 +13,12 @@ class Poster extends StatelessWidget {
   final String? path;
   final double width;
 
-  /// TMDB size bucket, see Tmdb.posterUrl.
   final String size;
 
   @override
   Widget build(BuildContext context) {
     final url = Tmdb.posterUrl(path, size: size);
-    // Posters are 2:3. Fixing the ratio avoids the list "jumping" while images load.
+    // Fixed 2:3 ratio so the list doesn't jump while images load.
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
       child: SizedBox(
@@ -31,7 +29,7 @@ class Poster extends StatelessWidget {
             : Image.network(
                 url,
                 fit: BoxFit.cover,
-                // Without errorBuilder, a broken image shows a red error box (and fails widget tests).
+                // Without errorBuilder a broken image shows a red box and fails widget tests.
                 errorBuilder: (_, _, _) => const _Placeholder(),
               ),
       ),

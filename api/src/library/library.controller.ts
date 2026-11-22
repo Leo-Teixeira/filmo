@@ -16,8 +16,7 @@ import { ListLibraryDto } from './dto/list-library.dto';
 import { UpsertLibraryEntryDto } from './dto/upsert-library-entry.dto';
 import { LibraryService } from './library.service';
 
-// "My library": the URL never contains a user id (/library, not /users/:id/library).
-// That's the simplest IDOR protection: there is no parameter to tamper with.
+// No user id in the URL: nothing to tamper with.
 @Controller('library')
 export class LibraryController {
   constructor(private readonly libraryService: LibraryService) {}
@@ -35,7 +34,6 @@ export class LibraryController {
     return this.libraryService.findOne(user.sub, titleId);
   }
 
-  // PUT (not POST): the client chooses the resource address (the titleId), and repeating the call is harmless.
   @Put(':titleId')
   upsert(
     @CurrentUser() user: JwtPayload,

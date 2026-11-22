@@ -6,8 +6,6 @@ import 'watch_status.dart';
 part 'library_entry.freezed.dart';
 part 'library_entry.g.dart';
 
-/// One row of "my library" (the UserTitle table), as returned by /library endpoints.
-/// No userId field: the API omits it (`omit: { userId: true }`), the client doesn't need it.
 @freezed
 abstract class LibraryEntry with _$LibraryEntry {
   const factory LibraryEntry({
@@ -17,7 +15,6 @@ abstract class LibraryEntry with _$LibraryEntry {
     int? rating,
     // Set by the API when the status becomes "completed".
     DateTime? watchedAt,
-    // Embedded by the API (include: { title: true }), so the library list can show posters without N extra calls.
     required MediaTitle title,
   }) = _LibraryEntry;
 

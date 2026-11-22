@@ -25,7 +25,7 @@ describe('LibraryService', () => {
     update: jest.fn(),
     delete: jest.fn(),
   };
-  // Interactive transaction: the callback receives "tx", here the same userTitle mock.
+  // $transaction runs the callback with the same userTitle mock as tx.
   const tx = { userTitle };
   const prisma = {
     userTitle,

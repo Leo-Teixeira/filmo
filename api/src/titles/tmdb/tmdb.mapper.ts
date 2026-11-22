@@ -1,4 +1,3 @@
-// Pure functions (no Nest, no HTTP): TMDB JSON in, ExternalTitle out. Easy to unit test in isolation.
 import { TitleType } from '../../generated/prisma/enums';
 import { ExternalTitle } from '../interfaces/metadata-provider.interface';
 import { TmdbDetails, TmdbSearchResult } from './tmdb.types';
@@ -6,7 +5,7 @@ import { TmdbDetails, TmdbSearchResult } from './tmdb.types';
 // TMDB genre id for "Animation" (same id for movies and TV).
 const ANIMATION_GENRE_ID = 16;
 
-// Product rule: an anime = Japanese animation. Not perfect (Franco-Japanese co-productions) but simple and explainable.
+// Product rule: anime = Japanese animation (misses Franco-Japanese co-productions).
 export function isAnime(
   genreIds: number[],
   originalLanguage: string | undefined,
@@ -14,19 +13,19 @@ export function isAnime(
   return genreIds.includes(ANIMATION_GENRE_ID) && originalLanguage === 'ja';
 }
 
-// TMDB sends "" for unknown dates, and "YYYY-MM-DD" otherwise. Anything unparsable becomes null.
+// TMDB sends "" for unknown dates; anything unparsable becomes null.
 export function parseTmdbDate(value: string | undefined): Date | null {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-// TMDB sends "" for a missing overview; null is clearer for the client ("no synopsis").
+// TMDB sends "" for a missing overview.
 function emptyToNull(value: string | null | undefined): string | null {
   return value ? value : null;
 }
 
-// Returns null for people (actors, directors): /search/multi mixes them with titles and we don't store them.
+// Null for people: /search/multi mixes them with titles.
 export function fromSearchResult(
   result: TmdbSearchResult,
 ): ExternalTitle | null {
@@ -37,7 +36,6 @@ export function fromSearchResult(
     externalId: String(result.id),
     type: isMovie ? TitleType.MOVIE : TitleType.TV,
     isAnime: isAnime(result.genre_ids ?? [], result.original_language),
-    // "??" chain: a title without any name would be useless, but we never crash on TMDB's data.
     title: (isMovie ? result.title : result.name) ?? '',
     overview: emptyToNull(result.overview),
     posterPath: emptyToNull(result.poster_path),
@@ -47,7 +45,7 @@ export function fromSearchResult(
   };
 }
 
-// The details payload has no media_type: the caller already knows the type (it built the URL with it).
+// The details payload has no media_type: the caller already knows the type.
 export function fromDetails(
   type: TitleType,
   details: TmdbDetails,
