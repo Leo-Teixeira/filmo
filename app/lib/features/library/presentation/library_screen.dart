@@ -1,5 +1,4 @@
 import 'package:filmo/features/common_widget/list_tile_title_widget.dart';
-import 'package:filmo/features/library/domain/watch_status.dart';
 import 'package:filmo/features/library/presentation/providers/library_provider.dart';
 import 'package:filmo/features/titles/domain/media_title.dart';
 import 'package:flutter/material.dart';

@@ -1,14 +1,10 @@
 import 'package:filmo/features/common_widget/list_tile_title_widget.dart';
-import 'package:filmo/features/library/domain/library_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_failure.dart';
-import '../../../core/router/app_routes.dart';
 import '../domain/media_title.dart';
 import 'title_search_provider.dart';
-import '../../common_widget/poster.dart';
 import 'widgets/tmdb_attribution.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {

@@ -14,7 +14,6 @@ sealed class ApiFailure implements Exception {
     final status = e.response?.statusCode;
     return switch (status) {
       null => const ApiOffline(),
-      // TODO(Léo): log the user out on 401 (Dio interceptor).
       401 => const ApiUnauthorized(),
       400 => const ApiInvalidRequest(),
       404 => const ApiNotFound(),

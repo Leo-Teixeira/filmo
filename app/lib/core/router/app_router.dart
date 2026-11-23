@@ -1,4 +1,3 @@
-import 'package:filmo/features/library/domain/watch_status.dart';
 import 'package:filmo/features/library/presentation/library_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';

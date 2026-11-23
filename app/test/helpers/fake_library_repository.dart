@@ -42,4 +42,9 @@ class FakeLibraryRepository implements LibraryRepository {
 
   @override
   Future<void> remove(String titleId) async => stored = null;
+
+  @override
+  Future<List<LibraryEntry>?> userLibrary(String? status) {
+    throw UnimplementedError();
+  }
 }

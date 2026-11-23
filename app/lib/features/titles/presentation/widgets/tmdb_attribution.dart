@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/config/tmdb.dart';
 
-/// TODO(Léo): add the official TMDB logo (themoviedb.org/about/logos-attribution) and an "À propos" screen.
 class TmdbAttribution extends StatelessWidget {
   const TmdbAttribution({super.key});
 
