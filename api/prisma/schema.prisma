@@ -91,6 +91,7 @@ model HouseholdMember {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([householdId, userId])
+  @@unique([userId, householdId])
   @@index([userId])
 }
 
