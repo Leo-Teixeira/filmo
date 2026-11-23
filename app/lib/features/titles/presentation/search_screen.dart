@@ -1,12 +1,10 @@
+import 'package:filmo/features/common_widget/list_tile_title_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_failure.dart';
-import '../../../core/router/app_routes.dart';
 import '../domain/media_title.dart';
 import 'title_search_provider.dart';
-import 'widgets/poster.dart';
 import 'widgets/tmdb_attribution.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -75,14 +73,8 @@ class _Results extends StatelessWidget {
       itemCount: titles.length + 1,
       itemBuilder: (context, index) {
         if (index == titles.length) return const TmdbAttribution();
-        final title = titles[index];
-        return ListTile(
-          leading: Poster(path: title.posterPath, width: 40, size: 'w92'),
-          title: Text(title.title),
-          subtitle: Text(title.subtitle),
-          // push, not go: back returns to the results.
-          onTap: () => context.push(AppRoutes.titleDetail(title.id)),
-        );
+        MediaTitle title = titles[index];
+        return ListTileTitleComponent(libraryTitle: title);
       },
     );
   }

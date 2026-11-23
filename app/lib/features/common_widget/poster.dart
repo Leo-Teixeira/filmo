@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/config/tmdb.dart';
+import '../../core/config/tmdb.dart';
 
 class Poster extends StatelessWidget {
   const Poster({

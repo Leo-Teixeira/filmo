@@ -1,3 +1,4 @@
+import 'package:filmo/features/library/domain/watch_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -47,20 +48,34 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const _Section(
+          _Section(
             icon: Icons.bookmark_border,
             title: 'À voir',
             subtitle: 'Ta liste de films, séries et animés à regarder.',
+            isComingSoon: false,
+            onTap: () {
+              context.push(
+                AppRoutes.libraryStatus(WatchStatus.wantToWatch.apiValue),
+              );
+            },
           ),
-          const _Section(
+          _Section(
             icon: Icons.play_circle_outline,
             title: 'En cours',
             subtitle: 'Les séries que tu suis en ce moment.',
+            isComingSoon: true,
+            onTap: () {
+              context.push(
+                AppRoutes.libraryStatus(WatchStatus.watching.apiValue),
+              );
+            },
           ),
-          const _Section(
+          _Section(
             icon: Icons.groups_outlined,
             title: 'Mon foyer',
             subtitle: 'Les collections partagées avec ton foyer.',
+            isComingSoon: true,
+            onTap: () {},
           ),
         ],
       ),
@@ -73,11 +88,15 @@ class _Section extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.onTap,
+    required this.isComingSoon,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool isComingSoon;
+  final Function() onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +106,8 @@ class _Section extends StatelessWidget {
         leading: Icon(icon),
         title: Text(title),
         subtitle: Text(subtitle),
-        trailing: const Text('Bientôt'),
+        trailing: isComingSoon ? const Text('Bientôt') : null,
+        onTap: onTap,
       ),
     );
   }
