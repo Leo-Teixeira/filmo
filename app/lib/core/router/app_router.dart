@@ -1,3 +1,5 @@
+import 'package:filmo/features/household/presentation/household_create_screen.dart';
+import 'package:filmo/features/household/presentation/household_screen.dart';
 import 'package:filmo/features/library/presentation/library_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
@@ -65,6 +67,16 @@ GoRouter appRouter(Ref ref) {
         path: AppRoutes.titleDetailPattern,
         builder: (context, state) =>
             TitleDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.household,
+        builder: (context, state) => HouseholdScreen(),
+        routes: [
+          GoRoute(
+            path: AppRoutes.householdCreate,
+            builder: (context, state) => HouseholdCreateScreen(),
+          ),
+        ],
       ),
     ],
   );

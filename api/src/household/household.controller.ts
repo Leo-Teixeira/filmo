@@ -23,9 +23,9 @@ export class HouseholdController {
         return this.householdService.deleteHousehold(user.sub, householdId);
     }
 
-    @Post(':householdId/join')
-    joinHousehold(@CurrentUser() user: JwtPayload, @Param('householdId', ParseUUIDPipe) householdId: string) {
-        return this.householdService.joinHousehold(user.sub, householdId);
+    @Post(':inviteCode/join')
+    joinHousehold(@CurrentUser() user: JwtPayload, @Param('inviteCode') inviteCode: string) {
+        return this.householdService.joinHousehold(user.sub, inviteCode);
     }
 
     @Delete(':householdId/leave')

@@ -75,7 +75,9 @@ class HomeScreen extends ConsumerWidget {
             title: 'Mon foyer',
             subtitle: 'Les collections partagées avec ton foyer.',
             isComingSoon: true,
-            onTap: () {},
+            onTap: () {
+              context.push(AppRoutes.household);
+            },
           ),
         ],
       ),

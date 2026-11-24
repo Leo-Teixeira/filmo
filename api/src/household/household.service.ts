@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { METADATA_PROVIDER, MetadataProvider } from "../titles/interfaces/metadata-provider.interface";
 import { CreateHouseholdDto } from "./dto/create-houshold-dto";
@@ -29,11 +29,13 @@ export class HouseholdService {
                 const householdMember = await tx.householdMember.create({
                     data: { householdId: household.id, userId: userId, role: HouseholdRole.OWNER }
                 })
+                return household;
             })
         } catch (error) {
             if (isPrismaError(error, PrismaErrorCode.ForeignKeyViolation)) {
                 throw new HouseholdNotFoundException();
             }
+            throw error;
         }
     }
 
@@ -50,11 +52,42 @@ export class HouseholdService {
         }
     }
 
-    async joinHousehold(userId: string, householdId: string) {
+    async joinHousehold(userId: string, inviteCode: string) {
         try {
-            return this.prisma.householdMember.create({
-                data: {userId: userId, role: "MEMBER", householdId: householdId},
-            })
+            return this.prisma.$transaction(async (tx) => {
+                // 1. On utilise 'tx', 'await' et 'select' pour récupérer l'objet { id: string }
+                const household = await tx.household.findUnique({
+                    where: { inviteCode },
+                    select: { id: true },
+                });
+
+                if (!household) {
+                    throw new NotFoundException("Code d'invitation invalide.");
+                }
+
+                const existingMember = await tx.householdMember.findUnique({
+                    where: {
+                        householdId_userId: {
+                            householdId: household.id,
+                            userId: userId,
+                        },
+                    },
+                });
+
+                if (existingMember) {
+                    throw new ConflictException('Vous êtes déjà membre de ce foyer.');
+                }
+
+                const addedMember = await tx.householdMember.create({
+                data: {
+                    userId: userId,
+                    role: 'MEMBER',
+                    householdId: household.id,
+                },
+                });
+
+                return addedMember;
+            });
         } catch (error) {
             if (isPrismaError(error, PrismaErrorCode.ForeignKeyViolation)) {
                 throw new HouseholdNotFoundException();
