@@ -51,7 +51,7 @@ export class UserService {
   }
 }
 
-class UserNotFoundException extends NotFoundException {
+export class UserNotFoundException extends NotFoundException {
   constructor() {
     super('User not found');
   }

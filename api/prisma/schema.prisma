@@ -20,7 +20,7 @@ enum WatchStatus {
   DROPPED
 }
 
-enum HouseholdRole {
+enum CollectionRole {
   OWNER
   MEMBER
 }
@@ -33,7 +33,7 @@ model User {
   createdAt    DateTime @default(now())
 
   titles          UserTitle[]
-  memberships     HouseholdMember[]
+  memberships     CollectionMember[]
   collectionItems CollectionItem[]
 }
 
@@ -71,46 +71,32 @@ model UserTitle {
   @@index([userId, status])
 }
 
-model Household {
+model CollectionMember {
+  collectionId String
+  userId       String
+  role         CollectionRole @default(MEMBER)
+  joinedAt     DateTime       @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, userId])
+  @@index([userId])
+}
+
+model Collection {
   id         String   @id @default(uuid())
   name       String
   inviteCode String   @unique
   createdAt  DateTime @default(now())
 
-  members     HouseholdMember[]
-  collections Collection[]
-}
-
-model HouseholdMember {
-  householdId String
-  userId      String
-  role        HouseholdRole @default(MEMBER)
-  joinedAt    DateTime      @default(now())
-
-  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([householdId, userId])
-  @@unique([userId, householdId])
-  @@index([userId])
-}
-
-model Collection {
-  id          String   @id @default(uuid())
-  name        String
-  householdId String
-  createdAt   DateTime @default(now())
-
-  household Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  items     CollectionItem[]
-
-  @@index([householdId])
+  members CollectionMember[]
+  items   CollectionItem[]
 }
 
 model CollectionItem {
   collectionId String
   titleId      String
-  // Nullable so a member can delete their account without wiping the household's items.
   addedById    String?
   addedAt      DateTime @default(now())
 
@@ -119,4 +105,5 @@ model CollectionItem {
   addedBy    User?      @relation(fields: [addedById], references: [id], onDelete: SetNull)
 
   @@id([collectionId, titleId])
+  @@index([titleId])
 }

@@ -37,7 +37,7 @@ describe('Auth & /me (e2e)', () => {
 
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: createdEmails } } });
-    await prisma.household.deleteMany({ where: { name: 'e2e-household' } });
+    await prisma.collection.deleteMany({ where: { name: 'e2e-collection' } });
     await prisma.title.deleteMany({ where: { provider: 'e2e' } });
     await app.close();
   });
@@ -68,7 +68,7 @@ describe('Auth & /me (e2e)', () => {
       .expect(200);
   });
 
-  it('deletes an account that added items, keeping the household items', async () => {
+  it('deletes an account that added items, keeping the collection items', async () => {
     const email = uniqueEmail();
     const auth = bearer(await register(email).expect(201));
     const me = await request(app.getHttpServer())
@@ -84,15 +84,10 @@ describe('Auth & /me (e2e)', () => {
         title: 'E2E',
       },
     });
-    const household = await prisma.household.create({
-      data: {
-        name: 'e2e-household',
-        inviteCode: randomUUID(),
-        collections: { create: { name: 'Watchlist' } },
-      },
-      include: { collections: true },
+    const collection = await prisma.collection.create({
+      data: { name: 'e2e-collection', inviteCode: randomUUID() },
     });
-    const collectionId = household.collections[0].id;
+    const collectionId = collection.id;
     await prisma.collectionItem.create({
       data: { collectionId, titleId: title.id, addedById: userId },
     });
