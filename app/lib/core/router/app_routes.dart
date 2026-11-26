@@ -4,8 +4,7 @@ abstract final class AppRoutes {
   static const auth = '/auth';
   static const home = '/';
   static const search = '/search';
-  static const household = '/household';
-  static const householdCreate = 'create';
+  static const collections = '/collections';
 
   static const libraryStatusPattern = '/library/:status';
   static const titleDetailPattern = '/titles/:id';

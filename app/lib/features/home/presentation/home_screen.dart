@@ -72,11 +72,11 @@ class HomeScreen extends ConsumerWidget {
           ),
           _Section(
             icon: Icons.groups_outlined,
-            title: 'Mon foyer',
-            subtitle: 'Les collections partagées avec ton foyer.',
-            isComingSoon: true,
+            title: 'Mes collections',
+            subtitle: 'Les collections partagées avec tes amis.',
+            isComingSoon: false,
             onTap: () {
-              context.push(AppRoutes.household);
+              context.push(AppRoutes.collections);
             },
           ),
         ],

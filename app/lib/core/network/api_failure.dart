@@ -17,6 +17,7 @@ sealed class ApiFailure implements Exception {
       401 => const ApiUnauthorized(),
       400 => const ApiInvalidRequest(),
       404 => const ApiNotFound(),
+      409 => const ApiConflict(),
       // The API maps TMDB's 429 to 503: not transient, don't hammer.
       503 => const ApiBusy(),
       502 || 504 => const ApiUpstreamDown(),
@@ -47,6 +48,10 @@ final class ApiBusy extends ApiFailure {
 
 final class ApiNotFound extends ApiFailure {
   const ApiNotFound() : super('Introuvable.');
+}
+
+final class ApiConflict extends ApiFailure {
+  const ApiConflict() : super('Action impossible dans l\'état actuel.');
 }
 
 final class ApiUpstreamDown extends ApiFailure {
