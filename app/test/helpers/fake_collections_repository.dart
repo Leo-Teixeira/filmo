@@ -16,7 +16,7 @@ CollectionEntry fakeCollection({
   createdAt: DateTime(2026, 11, 26),
 );
 
-/// In-memory fake; set [failure] to make the next mutation throw.
+/// In-memory fake; while [failure] is set, every call throws it.
 class FakeCollectionsRepository implements CollectionsRepository {
   FakeCollectionsRepository([List<CollectionEntry>? initial])
     : stored = [...?initial];
@@ -31,7 +31,10 @@ class FakeCollectionsRepository implements CollectionsRepository {
   }
 
   @override
-  Future<List<CollectionEntry>> listMine() async => [...stored];
+  Future<List<CollectionEntry>> listMine() async {
+    _maybeFail();
+    return [...stored];
+  }
 
   @override
   Future<CollectionEntry> create(String name) async {
@@ -61,5 +64,8 @@ class FakeCollectionsRepository implements CollectionsRepository {
   }
 
   @override
-  Future<void> leave(String id) => delete(id);
+  Future<void> leave(String id) async {
+    _maybeFail();
+    stored.removeWhere((c) => c.id == id);
+  }
 }

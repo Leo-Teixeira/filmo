@@ -27,7 +27,6 @@ class CollectionsRepository {
     return CollectionEntry.fromJson(response.data!);
   });
 
-  /// The code goes in the body so it never shows up in URLs or logs.
   Future<CollectionEntry> join(String inviteCode) => _call(() async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/collections/join',
@@ -36,10 +35,12 @@ class CollectionsRepository {
     return CollectionEntry.fromJson(response.data!);
   });
 
-  Future<void> delete(String id) => _call(() => _dio.delete<void>(_path(id)));
+  /// Idempotent: a collection already gone (deleted by its owner, or left) counts as done.
+  Future<void> delete(String id) =>
+      _doneIfGone(() => _dio.delete<void>(_path(id)));
 
   Future<void> leave(String id) =>
-      _call(() => _dio.post<void>('${_path(id)}/leave'));
+      _doneIfGone(() => _dio.post<void>('${_path(id)}/leave'));
 
   String _path(String id) => '/collections/${Uri.encodeComponent(id)}';
 
@@ -47,6 +48,15 @@ class CollectionsRepository {
     try {
       return await request();
     } on DioException catch (e) {
+      throw ApiFailure.fromDio(e);
+    }
+  }
+
+  Future<void> _doneIfGone(Future<void> Function() request) async {
+    try {
+      await request();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return;
       throw ApiFailure.fromDio(e);
     }
   }

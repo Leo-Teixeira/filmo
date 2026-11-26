@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_failure.dart';
 import '../domain/collection_entry.dart';
+import 'collection_errors.dart';
 import 'collection_validators.dart';
 import 'my_collections_controller.dart';
 import 'widgets/single_field_dialog.dart';
@@ -23,46 +24,90 @@ class CollectionsScreen extends ConsumerWidget {
           TextButton.icon(
             icon: const Icon(Icons.group_add_outlined),
             label: const Text('Rejoindre'),
-            onPressed: () => showDialog<bool>(
-              context: context,
-              builder: (_) => SingleFieldDialog(
+            onPressed: () => _openDialog(
+              context,
+              SingleFieldDialog(
                 title: 'Rejoindre une collection',
                 label: 'Code d\'invitation',
                 submitLabel: 'Rejoindre',
                 validator: CollectionValidators.inviteCode,
                 onSubmit: controller.join,
-                errorMessage: CollectionValidators.joinError,
+                errorMessage: joinErrorMessage,
+                maxLength: CollectionValidators.inviteCodeLength,
+                // Strip pasted spaces before the length limit truncates the code.
+                inputFormatters: [
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                ],
+                textCapitalization: TextCapitalization.characters,
+                autocorrect: false,
               ),
             ),
           ),
         ],
       ),
-      body: collections.when(
-        data: (list) => list.isEmpty
-            ? const Center(
-                child: Text('Crée une collection ou rejoins celle d\'un ami.'),
-              )
-            : ListView.builder(
-                itemCount: list.length,
-                itemBuilder: (context, i) => _CollectionTile(list[i]),
-              ),
-        error: (error, _) => Center(child: Text(userMessage(error))),
-        loading: () => const Center(child: CircularProgressIndicator()),
+      body: RefreshIndicator(
+        // A failed reload is already shown by the error state.
+        onRefresh: () => ref
+            .refresh(myCollectionsControllerProvider.future)
+            .then<void>((_) {}, onError: (_) {}),
+        child: collections.when(
+          data: (list) => list.isEmpty
+              ? const _Message(
+                  'Crée une collection ou rejoins celle d\'un ami.',
+                )
+              : ListView.builder(
+                  itemCount: list.length,
+                  itemBuilder: (context, i) => _CollectionTile(list[i]),
+                ),
+          error: (error, _) => _Message(
+            userMessage(error),
+            action: TextButton(
+              onPressed: collections.isLoading
+                  ? null
+                  : () => ref.invalidate(myCollectionsControllerProvider),
+              child: const Text('Réessayer'),
+            ),
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Nouvelle collection',
         child: const Icon(Icons.add),
-        onPressed: () => showDialog<bool>(
-          context: context,
-          builder: (_) => SingleFieldDialog(
+        onPressed: () => _openDialog(
+          context,
+          SingleFieldDialog(
             title: 'Nouvelle collection',
             label: 'Nom',
             submitLabel: 'Créer',
             validator: CollectionValidators.name,
             onSubmit: controller.create,
+            maxLength: CollectionValidators.nameMaxLength,
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _openDialog(BuildContext context, Widget dialog) =>
+      showDialog<void>(context: context, builder: (_) => dialog);
+}
+
+/// Scrollable so pull-to-refresh also works on the empty and error states.
+class _Message extends StatelessWidget {
+  const _Message(this.text, {this.action});
+
+  final String text;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(32),
+      children: [
+        Text(text, textAlign: TextAlign.center),
+        if (action != null) Center(child: action),
+      ],
     );
   }
 }
@@ -74,21 +119,19 @@ class _CollectionTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final code = collection.inviteCode;
     return ListTile(
       title: Text(collection.name),
       subtitle: Text(
-        '${collection.itemCount} titre(s) · ${collection.memberCount} membre(s)'
-        '${code != null ? ' · code $code' : ''}',
+        '${collection.itemCount} titre(s) · ${collection.memberCount} membre(s)',
       ),
       trailing: PopupMenuButton<_Action>(
         tooltip: 'Actions',
         onSelected: (action) => _run(context, ref, action),
         itemBuilder: (_) => [
-          if (code != null)
+          if (collection.inviteCode != null)
             const PopupMenuItem(
               value: _Action.copyCode,
-              child: Text('Copier le code'),
+              child: Text('Copier le code d\'invitation'),
             ),
           collection.isOwner
               ? const PopupMenuItem(
@@ -104,55 +147,61 @@ class _CollectionTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _run(BuildContext context, WidgetRef ref, _Action action) async {
-    final messenger = ScaffoldMessenger.of(context);
+  void _run(BuildContext context, WidgetRef ref, _Action action) {
     final controller = ref.read(myCollectionsControllerProvider.notifier);
-    final (
-      String? question,
-      Future<void> Function() mutation,
-    ) = switch (action) {
-      _Action.copyCode => (
-        null,
-        () => Clipboard.setData(ClipboardData(text: collection.inviteCode!)),
+    switch (action) {
+      case _Action.copyCode:
+        _copyCode(context);
+      case _Action.delete:
+        _confirmThen(
+          context,
+          'Supprimer « ${collection.name} » pour tous ses membres ?',
+          () => controller.delete(collection.id),
+        );
+      case _Action.leave:
+        _confirmThen(
+          context,
+          'Quitter « ${collection.name} » ?',
+          () => controller.leave(collection.id),
+        );
+    }
+  }
+
+  Future<void> _copyCode(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(ClipboardData(text: collection.inviteCode!));
+    messenger.showSnackBar(const SnackBar(content: Text('Code copié.')));
+  }
+
+  Future<void> _confirmThen(
+    BuildContext context,
+    String question,
+    Future<void> Function() mutation,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(question),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Confirmer'),
+          ),
+        ],
       ),
-      _Action.delete => (
-        'Supprimer « ${collection.name} » pour tous ses membres ?',
-        () => controller.delete(collection.id),
-      ),
-      _Action.leave => (
-        'Quitter « ${collection.name} » ?',
-        () => controller.leave(collection.id),
-      ),
-    };
-    if (question != null && !await _confirm(context, question)) return;
+    );
+    if (confirmed != true) return;
     try {
       await mutation();
-      if (action == _Action.copyCode) {
-        messenger.showSnackBar(const SnackBar(content: Text('Code copié.')));
-      }
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
     }
   }
-
-  Future<bool> _confirm(BuildContext context, String message) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Annuler'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Confirmer'),
-            ),
-          ],
-        ),
-      ) ??
-      false;
 }
 
 enum _Action { copyCode, delete, leave }

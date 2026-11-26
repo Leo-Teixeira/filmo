@@ -16,14 +16,18 @@ void main() {
   List<CollectionEntry>? current() =>
       container.read(myCollectionsControllerProvider).value;
 
-  setUp(() async {
-    repo = FakeCollectionsRepository([fakeCollection()]);
+  Future<void> start(FakeCollectionsRepository fake) async {
+    repo = fake;
     container = ProviderContainer.test(
       overrides: [collectionsRepositoryProvider.overrideWithValue(repo)],
     );
     container.listen(myCollectionsControllerProvider, (_, _) {});
-    await container.read(myCollectionsControllerProvider.future);
-  });
+    await container
+        .read(myCollectionsControllerProvider.future)
+        .catchError((_) => <CollectionEntry>[]);
+  }
+
+  setUp(() => start(FakeCollectionsRepository([fakeCollection()])));
 
   test('loads my collections', () {
     expect(current()?.map((c) => c.id), ['col-1']);
@@ -42,12 +46,17 @@ void main() {
     expect(current()?.last.role, CollectionRole.member);
   });
 
-  test('delete and leave remove the collection from the list', () async {
-    await controller().join('ABCDEFGHJK');
+  test('delete removes the collection from the list', () async {
     await controller().delete('col-1');
-    await controller().leave('joined');
 
     expect(current(), isEmpty);
+  });
+
+  test('leave removes the collection from the list', () async {
+    await controller().join('ABCDEFGHJK');
+    await controller().leave('joined');
+
+    expect(current()?.map((c) => c.id), ['col-1']);
   });
 
   test('a failed mutation rethrows and keeps the list', () async {
@@ -58,5 +67,20 @@ void main() {
       throwsA(isA<ApiConflict>()),
     );
     expect(current()?.map((c) => c.id), ['col-1']);
+  });
+
+  test('a mutation after a failed load reloads the list', () async {
+    // Non-transient on purpose: a retry must not be what reloads the list.
+    final fake = FakeCollectionsRepository()..failure = const ApiNotFound();
+    await start(fake);
+    expect(container.read(myCollectionsControllerProvider).hasError, isTrue);
+
+    fake.failure = null;
+    await controller().create('Films');
+    final reloaded = await container.read(
+      myCollectionsControllerProvider.future,
+    );
+
+    expect(reloaded.map((c) => c.name), ['Films']);
   });
 }

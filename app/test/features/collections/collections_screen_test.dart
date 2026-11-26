@@ -22,7 +22,9 @@ Future<void> pumpScreen(
 }
 
 void main() {
-  testWidgets('shows the invite code to the owner only', (tester) async {
+  testWidgets('never prints the invite code; only the owner can copy it', (
+    tester,
+  ) async {
     await pumpScreen(
       tester,
       FakeCollectionsRepository([
@@ -34,9 +36,30 @@ void main() {
         ),
       ]),
     );
+    expect(find.textContaining('ABCDEFGHJK'), findsNothing);
 
-    expect(find.textContaining('code ABCDEFGHJK'), findsOneWidget);
-    expect(find.text('Chez Sam'), findsOneWidget);
+    await tester.tap(find.byTooltip('Actions').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Copier le code d\'invitation'), findsOneWidget);
+    await tester.tapAt(Offset.zero);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Actions').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Copier le code d\'invitation'), findsNothing);
+  });
+
+  testWidgets('offers a retry when loading fails', (tester) async {
+    final repo = FakeCollectionsRepository([fakeCollection()])
+      ..failure = const ApiNotFound();
+    await pumpScreen(tester, repo);
+    expect(find.text('Introuvable.'), findsOneWidget);
+
+    repo.failure = null;
+    await tester.tap(find.text('Réessayer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Soirées'), findsOneWidget);
   });
 
   testWidgets('shows an empty state', (tester) async {
@@ -83,6 +106,37 @@ void main() {
 
     expect(find.text('Code d\'invitation invalide.'), findsOneWidget);
     expect(find.byType(AlertDialog), findsOneWidget);
+
+    repo.failure = const ApiConflict();
+    await tester.tap(find.widgetWithText(FilledButton, 'Rejoindre'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tu es déjà membre de cette collection.'), findsOneWidget);
+  });
+
+  testWidgets('owner delete: cancel keeps it, a failure shows a snackbar', (
+    tester,
+  ) async {
+    final repo = FakeCollectionsRepository([fakeCollection()]);
+    await pumpScreen(tester, repo);
+
+    Future<void> askDelete() async {
+      await tester.tap(find.byTooltip('Actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Supprimer'));
+      await tester.pumpAndSettle();
+    }
+
+    await askDelete();
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
+    expect(repo.stored, hasLength(1));
+
+    repo.failure = const ApiOffline();
+    await askDelete();
+    await tester.tap(find.text('Confirmer'));
+    await tester.pumpAndSettle();
+    expect(find.text(const ApiOffline().message), findsOneWidget);
+    expect(find.text('Soirées'), findsOneWidget);
   });
 
   testWidgets('a member can leave after confirming', (tester) async {

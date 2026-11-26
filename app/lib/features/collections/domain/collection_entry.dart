@@ -11,6 +11,7 @@ abstract class CollectionEntry with _$CollectionEntry {
   const factory CollectionEntry({
     required String id,
     required String name,
+    @JsonKey(unknownEnumValue: CollectionRole.member)
     required CollectionRole role,
     // Only sent to the owner: only the owner may invite.
     String? inviteCode,

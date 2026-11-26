@@ -10,6 +10,8 @@ part 'my_collections_controller.g.dart';
 // Mutations rethrow (shown by the caller) and leave the list untouched on failure.
 @Riverpod(retry: retryTransient)
 class MyCollectionsController extends _$MyCollectionsController {
+  final _removing = <String>{};
+
   @override
   Future<List<CollectionEntry>> build() =>
       ref.watch(collectionsRepositoryProvider).listMine();
@@ -28,20 +30,34 @@ class MyCollectionsController extends _$MyCollectionsController {
     _update((list) => [...list, joined]);
   }
 
-  Future<void> delete(String id) async {
-    await ref.read(collectionsRepositoryProvider).delete(id);
-    _update((list) => list.where((c) => c.id != id).toList());
-  }
+  Future<void> delete(String id) =>
+      _remove(id, ref.read(collectionsRepositoryProvider).delete);
 
-  Future<void> leave(String id) async {
-    await ref.read(collectionsRepositoryProvider).leave(id);
-    _update((list) => list.where((c) => c.id != id).toList());
+  Future<void> leave(String id) =>
+      _remove(id, ref.read(collectionsRepositoryProvider).leave);
+
+  /// A second tap while the request is in flight is dropped, not sent twice.
+  Future<void> _remove(String id, Future<void> Function(String) request) async {
+    if (!_removing.add(id)) return;
+    try {
+      await request(id);
+      _update((list) => list.where((c) => c.id != id).toList());
+    } finally {
+      _removing.remove(id);
+    }
   }
 
   void _update(List<CollectionEntry> Function(List<CollectionEntry>) change) {
     // Disposed during the request (user left the screen): touching `state` would throw.
     if (!ref.mounted) return;
     final current = state.value;
-    if (current != null) state = AsyncData(change(current));
+    // No list yet (loading or failed): reload so the server-side change shows up.
+    if (current == null) {
+      ref.invalidateSelf();
+      return;
+    }
+    state = AsyncData(
+      change(current)..sort((a, b) => a.createdAt.compareTo(b.createdAt)),
+    );
   }
 }
