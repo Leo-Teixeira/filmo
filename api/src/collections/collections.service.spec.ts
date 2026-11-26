@@ -8,9 +8,9 @@ import { TitleNotFoundException } from '../titles/titles.service';
 import {
   CollectionItemNotFoundException,
   CollectionNotFoundException,
-  CollectionsService,
   InviteCodeNotFoundException,
-} from './collections.service';
+} from './collections.errors';
+import { CollectionsService } from './collections.service';
 import { INVITE_CODE_PATTERN } from './invite-code';
 
 const prismaError = (code: string) =>
@@ -43,17 +43,11 @@ describe('CollectionsService', () => {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     create: jest.fn(),
-    count: jest.fn(),
     delete: jest.fn(),
   };
   const collectionItem = { create: jest.fn(), delete: jest.fn() };
-  const tx = { collectionMember };
-  const prisma = {
-    collection,
-    collectionMember,
-    collectionItem,
-    $transaction: jest.fn((run: (client: typeof tx) => unknown) => run(tx)),
-  };
+  const title = { findUnique: jest.fn() };
+  const prisma = { collection, collectionMember, collectionItem, title };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -80,29 +74,6 @@ describe('CollectionsService', () => {
         create: { userId: 'user-1', role: CollectionRole.OWNER },
       });
       expect(result).toMatchObject({ role: 'OWNER', inviteCode: 'ABCDEFGHJK' });
-    });
-
-    it('retries on an invite code collision', async () => {
-      collection.create
-        .mockRejectedValueOnce(
-          prismaError(PrismaErrorCode.UniqueConstraintViolation),
-        )
-        .mockResolvedValueOnce(row(CollectionRole.OWNER));
-
-      await service.create('user-1', 'Films');
-
-      expect(collection.create).toHaveBeenCalledTimes(2);
-    });
-
-    it('gives up after repeated collisions', async () => {
-      collection.create.mockRejectedValue(
-        prismaError(PrismaErrorCode.UniqueConstraintViolation),
-      );
-
-      await expect(service.create('user-1', 'Films')).rejects.toBeInstanceOf(
-        Prisma.PrismaClientKnownRequestError,
-      );
-      expect(collection.create).toHaveBeenCalledTimes(3);
     });
 
     it('returns 404 when the account no longer exists', async () => {
@@ -156,6 +127,31 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('maps a missing collection on delete to 404', async () => {
+    collection.delete.mockRejectedValue(
+      prismaError(PrismaErrorCode.RecordNotFound),
+    );
+
+    await expect(service.remove('col-1', 'user-1')).rejects.toBeInstanceOf(
+      CollectionNotFoundException,
+    );
+  });
+
+  it('scopes the member list to collections the caller belongs to', async () => {
+    collectionMember.findMany.mockResolvedValue([]);
+
+    await service.listMembers('col-1', 'user-1');
+
+    expect(collectionMember.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          collectionId: 'col-1',
+          collection: { members: { some: { userId: 'user-1' } } },
+        },
+      }),
+    );
+  });
+
   it('rethrows unexpected errors on delete', async () => {
     collection.delete.mockRejectedValue(new Error('db down'));
 
@@ -183,6 +179,17 @@ describe('CollectionsService', () => {
       );
     });
 
+    it('returns 404 when the collection vanished before the insert', async () => {
+      collection.findUnique.mockResolvedValue({ id: 'col-1' });
+      collectionMember.create.mockRejectedValue(
+        prismaError(PrismaErrorCode.ForeignKeyViolation),
+      );
+
+      await expect(service.join('user-1', 'ABCDEFGHJK')).rejects.toBeInstanceOf(
+        InviteCodeNotFoundException,
+      );
+    });
+
     it('joins as MEMBER and returns the summary', async () => {
       collection.findUnique.mockResolvedValue({ id: 'col-1' });
       collectionMember.create.mockResolvedValue({});
@@ -198,11 +205,10 @@ describe('CollectionsService', () => {
   });
 
   describe('leave', () => {
-    it('blocks the last owner', async () => {
+    it('blocks the owner', async () => {
       collectionMember.findUnique.mockResolvedValue({
         role: CollectionRole.OWNER,
       });
-      collectionMember.count.mockResolvedValue(1);
 
       await expect(service.leave('col-1', 'user-1')).rejects.toBeInstanceOf(
         ConflictException,
@@ -250,20 +256,30 @@ describe('CollectionsService', () => {
       );
     });
 
-    it('maps a duplicate to 409 and an unknown title to 404', async () => {
-      collectionItem.create.mockRejectedValueOnce(
+    it('maps a duplicate to 409', async () => {
+      collectionItem.create.mockRejectedValue(
         prismaError(PrismaErrorCode.UniqueConstraintViolation),
       );
+
       await expect(
         service.addItem('col-1', 'user-1', 'title-1'),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
 
-      collectionItem.create.mockRejectedValueOnce(
+    it('tells an unknown title from a collection deleted mid-request', async () => {
+      collectionItem.create.mockRejectedValue(
         prismaError(PrismaErrorCode.ForeignKeyViolation),
       );
+
+      title.findUnique.mockResolvedValueOnce(null);
       await expect(
         service.addItem('col-1', 'user-1', 'title-1'),
       ).rejects.toBeInstanceOf(TitleNotFoundException);
+
+      title.findUnique.mockResolvedValueOnce({ id: 'title-1' });
+      await expect(
+        service.addItem('col-1', 'user-1', 'title-1'),
+      ).rejects.toBeInstanceOf(CollectionNotFoundException);
     });
 
     it('returns 404 when removing a title that is not there', async () => {
@@ -272,8 +288,14 @@ describe('CollectionsService', () => {
       );
 
       await expect(
-        service.removeItem('col-1', 'title-1'),
+        service.removeItem('col-1', 'user-1', 'title-1'),
       ).rejects.toBeInstanceOf(CollectionItemNotFoundException);
+      expect(collectionItem.delete).toHaveBeenCalledWith({
+        where: {
+          collectionId_titleId: { collectionId: 'col-1', titleId: 'title-1' },
+          collection: { members: { some: { userId: 'user-1' } } },
+        },
+      });
     });
   });
 });

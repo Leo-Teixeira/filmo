@@ -1,6 +1,6 @@
 import { IsUUID } from 'class-validator';
 
-export class TitleCollectionDto {
+export class CollectionItemDto {
   @IsUUID()
   titleId: string;
 }

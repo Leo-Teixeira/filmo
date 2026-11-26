@@ -1,11 +1,9 @@
-import { Transform } from 'class-transformer';
 import { IsString, Matches } from 'class-validator';
+import { NormalizeInviteCode } from '../../common/transformers';
 import { INVITE_CODE_PATTERN } from '../invite-code';
 
 export class JoinCollectionDto {
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @NormalizeInviteCode()
   @IsString()
   @Matches(INVITE_CODE_PATTERN, { message: 'inviteCode is invalid' })
   inviteCode: string;

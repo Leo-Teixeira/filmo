@@ -97,6 +97,7 @@ model Collection {
 model CollectionItem {
   collectionId String
   titleId      String
+  // Nullable so a member can delete their account without wiping the collection's items.
   addedById    String?
   addedAt      DateTime @default(now())
 

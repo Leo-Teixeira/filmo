@@ -13,6 +13,9 @@ ALTER TABLE "HouseholdMember" DROP CONSTRAINT "HouseholdMember_userId_fkey";
 -- DropIndex
 DROP INDEX "Collection_householdId_idx";
 
+-- Collections lose their household (and thus every member): nothing was deployed, so they are dropped.
+DELETE FROM "Collection";
+
 -- AlterTable
 ALTER TABLE "Collection" DROP COLUMN "householdId",
 ADD COLUMN     "inviteCode" TEXT NOT NULL;

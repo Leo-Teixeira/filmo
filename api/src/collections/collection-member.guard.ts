@@ -10,7 +10,7 @@ import { isUUID } from 'class-validator';
 import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
 import { CollectionRole } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
-import { CollectionNotFoundException } from './collections.service';
+import { CollectionNotFoundException } from './collections.errors';
 
 const OWNER_ONLY_KEY = 'collectionOwnerOnly';
 export const OwnerOnly = () => SetMetadata(OWNER_ONLY_KEY, true);

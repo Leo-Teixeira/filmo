@@ -179,6 +179,20 @@ describe('Collections (e2e)', () => {
       .delete(`/collections/${id}`)
       .set('Authorization', member)
       .expect(403);
+    const asMember = await http()
+      .get(`/collections/${id}`)
+      .set('Authorization', member)
+      .expect(200);
+    expect(asMember.body).toMatchObject({ name: 'Soirées', role: 'MEMBER' });
+    expect(asMember.body).not.toHaveProperty('inviteCode');
+    const memberList = await http()
+      .get('/collections')
+      .set('Authorization', member)
+      .expect(200);
+    const listed = (memberList.body as Summary[]).find((c) => c.id === id);
+    expect(listed).toBeDefined();
+    expect(listed).not.toHaveProperty('inviteCode');
+
     await http()
       .patch(`/collections/${id}`)
       .set('Authorization', owner)
@@ -216,6 +230,17 @@ describe('Collections (e2e)', () => {
       .set('Authorization', owner)
       .expect(404);
 
+    // Any member may remove a title someone else added.
+    await http()
+      .post(`/collections/${id}/items`)
+      .set('Authorization', owner)
+      .send({ titleId })
+      .expect(201);
+    await http()
+      .delete(`/collections/${id}/items/${titleId}`)
+      .set('Authorization', member)
+      .expect(204);
+
     await http()
       .post(`/collections/${id}/leave`)
       .set('Authorization', owner)
@@ -237,5 +262,30 @@ describe('Collections (e2e)', () => {
       .get(`/collections/${id}`)
       .set('Authorization', owner)
       .expect(404);
+  });
+
+  it('keeps items when their adder deletes their account, and drops collections with their owner', async () => {
+    const [ownerAuth, memberAuth] = await Promise.all([signUp(), signUp()]);
+    const { id, inviteCode } = await createCollection(ownerAuth);
+    await http()
+      .post('/collections/join')
+      .set('Authorization', memberAuth)
+      .send({ inviteCode })
+      .expect(201);
+    await http()
+      .post(`/collections/${id}/items`)
+      .set('Authorization', memberAuth)
+      .send({ titleId })
+      .expect(201);
+
+    await http().delete('/me').set('Authorization', memberAuth).expect(204);
+    const item = await prisma.collectionItem.findUnique({
+      where: { collectionId_titleId: { collectionId: id, titleId } },
+    });
+    expect(item).not.toBeNull();
+    expect(item?.addedById).toBeNull();
+
+    await http().delete('/me').set('Authorization', ownerAuth).expect(204);
+    expect(await prisma.collection.findUnique({ where: { id } })).toBeNull();
   });
 });

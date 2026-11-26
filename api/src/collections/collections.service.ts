@@ -1,16 +1,19 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
 import { CollectionRole } from '../generated/prisma/enums';
 import { isPrismaError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import { TitleNotFoundException } from '../titles/titles.service';
 import { UserNotFoundException } from '../user/user.service';
+import {
+  AlreadyMemberException,
+  CollectionItemNotFoundException,
+  CollectionNotFoundException,
+  InviteCodeNotFoundException,
+  OwnerCannotLeaveException,
+  TitleAlreadyInCollectionException,
+} from './collections.errors';
 import { generateInviteCode } from './invite-code';
-
-const MAX_INVITE_CODE_ATTEMPTS = 3;
 
 const summarySelect = (userId: string) =>
   ({
@@ -28,18 +31,15 @@ const itemSelect = {
   addedBy: { select: { id: true, displayName: true } },
 } as const;
 
-interface CollectionSummaryRow {
-  id: string;
-  name: string;
-  inviteCode: string;
-  createdAt: Date;
-  members: { role: CollectionRole }[];
-  _count: { items: number; members: number };
-}
+type CollectionSummaryRow = Prisma.CollectionGetPayload<{
+  select: ReturnType<typeof summarySelect>;
+}>;
 
 // Only the owner may invite, so only the owner sees the invite code.
 function toSummary(row: CollectionSummaryRow) {
-  const role = row.members[0].role;
+  const membership = row.members.at(0);
+  if (!membership) throw new CollectionNotFoundException();
+  const role = membership.role;
   return {
     id: row.id,
     name: row.name,
@@ -51,7 +51,7 @@ function toSummary(row: CollectionSummaryRow) {
   };
 }
 
-// Access to /collections/:id is enforced by CollectionMemberGuard; queries still scope to the caller where it is free.
+// CollectionMemberGuard is the access check; the membership/owner filters below are a second line if a route ever skips it.
 @Injectable()
 export class CollectionsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -66,30 +66,22 @@ export class CollectionsService {
   }
 
   async create(userId: string, name: string) {
-    for (let attempt = 1; ; attempt++) {
-      try {
-        const row = await this.prisma.collection.create({
-          data: {
-            name,
-            inviteCode: generateInviteCode(),
-            members: { create: { userId, role: CollectionRole.OWNER } },
-          },
-          select: summarySelect(userId),
-        });
-        return toSummary(row);
-      } catch (e) {
-        // The only unique column on a new collection is inviteCode: retry on collision.
-        if (
-          isPrismaError(e, PrismaErrorCode.UniqueConstraintViolation) &&
-          attempt < MAX_INVITE_CODE_ATTEMPTS
-        ) {
-          continue;
-        }
-        if (isPrismaError(e, PrismaErrorCode.ForeignKeyViolation)) {
-          throw new UserNotFoundException();
-        }
-        throw e;
+    try {
+      const row = await this.prisma.collection.create({
+        data: {
+          name,
+          // 50 bits of entropy: a collision is not worth a retry loop.
+          inviteCode: generateInviteCode(),
+          members: { create: { userId, role: CollectionRole.OWNER } },
+        },
+        select: summarySelect(userId),
+      });
+      return toSummary(row);
+    } catch (e) {
+      if (isPrismaError(e, PrismaErrorCode.ForeignKeyViolation)) {
+        throw new UserNotFoundException();
       }
+      throw e;
     }
   }
 
@@ -153,7 +145,7 @@ export class CollectionsService {
       });
     } catch (e) {
       if (isPrismaError(e, PrismaErrorCode.UniqueConstraintViolation)) {
-        throw new ConflictException('Already a member of this collection');
+        throw new AlreadyMemberException();
       }
       // Collection deleted or account deleted between the lookup and the insert.
       if (isPrismaError(e, PrismaErrorCode.ForeignKeyViolation)) {
@@ -165,26 +157,24 @@ export class CollectionsService {
   }
 
   async leave(collectionId: string, userId: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      const key = { collectionId_userId: { collectionId, userId } };
-      const membership = await tx.collectionMember.findUnique({
-        where: key,
-        select: { role: true },
-      });
-      if (!membership) throw new CollectionNotFoundException();
-
-      if (membership.role === CollectionRole.OWNER) {
-        const owners = await tx.collectionMember.count({
-          where: { collectionId, role: CollectionRole.OWNER },
-        });
-        if (owners <= 1) {
-          throw new ConflictException(
-            'The last owner cannot leave; delete the collection instead',
-          );
-        }
-      }
-      await tx.collectionMember.delete({ where: key });
+    const key = { collectionId_userId: { collectionId, userId } };
+    const membership = await this.prisma.collectionMember.findUnique({
+      where: key,
+      select: { role: true },
     });
+    if (!membership) throw new CollectionNotFoundException();
+    // Exactly one owner per collection until ownership transfer exists.
+    if (membership.role === CollectionRole.OWNER) {
+      throw new OwnerCannotLeaveException();
+    }
+    try {
+      await this.prisma.collectionMember.delete({ where: key });
+    } catch (e) {
+      if (isPrismaError(e, PrismaErrorCode.RecordNotFound)) {
+        throw new CollectionNotFoundException();
+      }
+      throw e;
+    }
   }
 
   listMembers(collectionId: string, userId: string) {
@@ -207,19 +197,26 @@ export class CollectionsService {
       });
     } catch (e) {
       if (isPrismaError(e, PrismaErrorCode.UniqueConstraintViolation)) {
-        throw new ConflictException('Title already in this collection');
+        throw new TitleAlreadyInCollectionException();
       }
       if (isPrismaError(e, PrismaErrorCode.ForeignKeyViolation)) {
-        throw new TitleNotFoundException();
+        throw await this.missingReferenceError(titleId);
       }
       throw e;
     }
   }
 
-  async removeItem(collectionId: string, titleId: string): Promise<void> {
+  async removeItem(
+    collectionId: string,
+    userId: string,
+    titleId: string,
+  ): Promise<void> {
     try {
       await this.prisma.collectionItem.delete({
-        where: { collectionId_titleId: { collectionId, titleId } },
+        where: {
+          collectionId_titleId: { collectionId, titleId },
+          collection: { members: { some: { userId } } },
+        },
       });
     } catch (e) {
       if (isPrismaError(e, PrismaErrorCode.RecordNotFound)) {
@@ -229,6 +226,17 @@ export class CollectionsService {
     }
   }
 
+  // P2003 does not say which foreign key failed: unknown title, or collection/account deleted mid-request.
+  private async missingReferenceError(titleId: string) {
+    const title = await this.prisma.title.findUnique({
+      where: { id: titleId },
+      select: { id: true },
+    });
+    return title
+      ? new CollectionNotFoundException()
+      : new TitleNotFoundException();
+  }
+
   private async findSummary(collectionId: string, userId: string) {
     const row = await this.prisma.collection.findFirst({
       where: { id: collectionId, members: { some: { userId } } },
@@ -236,23 +244,5 @@ export class CollectionsService {
     });
     if (!row) throw new CollectionNotFoundException();
     return toSummary(row);
-  }
-}
-
-export class CollectionNotFoundException extends NotFoundException {
-  constructor() {
-    super('Collection not found');
-  }
-}
-
-export class InviteCodeNotFoundException extends NotFoundException {
-  constructor() {
-    super('Invite code not found');
-  }
-}
-
-export class CollectionItemNotFoundException extends NotFoundException {
-  constructor() {
-    super('Title not in this collection');
   }
 }

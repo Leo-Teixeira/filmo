@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { CollectionRole } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { CollectionMemberGuard } from './collection-member.guard';
-import { CollectionNotFoundException } from './collections.service';
+import { CollectionNotFoundException } from './collections.errors';
 
 const COLLECTION_ID = '4f0c2a8e-7c1b-4d7e-9b9a-2f6d1c3e5a7b';
 
@@ -66,6 +66,15 @@ describe('CollectionMemberGuard', () => {
   it('lets an owner through owner-only routes', async () => {
     findUnique.mockResolvedValue({ role: CollectionRole.OWNER });
     reflector.getAllAndOverride.mockReturnValue(true);
+
+    await expect(guard.canActivate(contextFor(COLLECTION_ID))).resolves.toBe(
+      true,
+    );
+  });
+
+  it('lets a member through routes that are not owner-only', async () => {
+    findUnique.mockResolvedValue({ role: CollectionRole.MEMBER });
+    reflector.getAllAndOverride.mockReturnValue(undefined);
 
     await expect(guard.canActivate(contextFor(COLLECTION_ID))).resolves.toBe(
       true,

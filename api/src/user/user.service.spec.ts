@@ -14,6 +14,8 @@ describe('UserService', () => {
   let service: UserService;
   const prisma = {
     user: { findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    collection: { deleteMany: jest.fn() },
+    $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
 
   beforeEach(async () => {
@@ -57,6 +59,16 @@ describe('UserService', () => {
     await expect(service.removeMe('ghost')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('deletes the collections the user owns along with the account', async () => {
+    prisma.user.delete.mockResolvedValue({});
+
+    await service.removeMe('user-1');
+
+    expect(prisma.collection.deleteMany).toHaveBeenCalledWith({
+      where: { members: { some: { userId: 'user-1', role: 'OWNER' } } },
+    });
   });
 
   it('rethrows other errors untouched', async () => {

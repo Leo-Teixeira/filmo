@@ -16,18 +16,16 @@ import type { JwtPayload } from '../auth/jwt-auth.guard';
 import { CollectionMemberGuard, OwnerOnly } from './collection-member.guard';
 import { CollectionsService } from './collections.service';
 import { CollectionNameDto } from './dto/collection-name.dto';
-import { TitleCollectionDto } from './dto/title-collection-dto';
+import { CollectionItemDto } from './dto/collection-item.dto';
 
+// The guard validates :id (404 on a malformed uuid) before any pipe runs.
 @Controller('collections/:id')
 @UseGuards(CollectionMemberGuard)
 export class CollectionMemberController {
   constructor(private readonly collectionsService: CollectionsService) {}
 
   @Get()
-  findOne(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.collectionsService.findOne(id, user.sub);
   }
 
@@ -35,7 +33,7 @@ export class CollectionMemberController {
   @OwnerOnly()
   rename(
     @CurrentUser() user: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: CollectionNameDto,
   ) {
     return this.collectionsService.rename(id, user.sub, dto.name);
@@ -44,35 +42,26 @@ export class CollectionMemberController {
   @Delete()
   @OwnerOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.collectionsService.remove(id, user.sub);
   }
 
   @Get('members')
-  listMembers(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  listMembers(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.collectionsService.listMembers(id, user.sub);
   }
 
   @Post('leave')
   @HttpCode(HttpStatus.NO_CONTENT)
-  leave(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  leave(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.collectionsService.leave(id, user.sub);
   }
 
   @Post('items')
   addItem(
     @CurrentUser() user: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: TitleCollectionDto,
+    @Param('id') id: string,
+    @Body() dto: CollectionItemDto,
   ) {
     return this.collectionsService.addItem(id, user.sub, dto.titleId);
   }
@@ -80,9 +69,10 @@ export class CollectionMemberController {
   @Delete('items/:titleId')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeItem(
-    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
     @Param('titleId', ParseUUIDPipe) titleId: string,
   ) {
-    return this.collectionsService.removeItem(id, titleId);
+    return this.collectionsService.removeItem(id, user.sub, titleId);
   }
 }
