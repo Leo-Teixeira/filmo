@@ -1,6 +1,17 @@
 import 'package:filmo/core/network/api_failure.dart';
 import 'package:filmo/features/collections/data/collections_repository.dart';
 import 'package:filmo/features/collections/domain/collection_entry.dart';
+import 'package:filmo/features/collections/domain/collection_members_entry.dart';
+
+CollectionMembersEntry fakeMember({
+  String id = 'user-1',
+  String displayName = 'Léo',
+  CollectionRole role = CollectionRole.owner,
+}) => CollectionMembersEntry(
+  role: role,
+  joinedAt: DateTime(2026, 11, 26),
+  user: MemberProfile(id: id, displayName: displayName),
+);
 
 CollectionEntry fakeCollection({
   String id = 'col-1',
@@ -24,6 +35,10 @@ class FakeCollectionsRepository implements CollectionsRepository {
   final List<CollectionEntry> stored;
   ApiFailure? failure;
   final joinedCodes = <String>[];
+  List<CollectionMembersEntry> members = [
+    fakeMember(),
+    fakeMember(id: 'user-2', displayName: 'Sam', role: CollectionRole.member),
+  ];
 
   void _maybeFail() {
     final f = failure;
@@ -67,5 +82,11 @@ class FakeCollectionsRepository implements CollectionsRepository {
   Future<void> leave(String id) async {
     _maybeFail();
     stored.removeWhere((c) => c.id == id);
+  }
+
+  @override
+  Future<List<CollectionMembersEntry>> showMembers(String collectionId) async {
+    _maybeFail();
+    return [...members];
   }
 }

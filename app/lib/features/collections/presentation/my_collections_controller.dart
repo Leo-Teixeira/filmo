@@ -1,3 +1,4 @@
+import 'package:filmo/features/collections/domain/collection_members_entry.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/network/retry.dart';
@@ -45,6 +46,10 @@ class MyCollectionsController extends _$MyCollectionsController {
     } finally {
       _removing.remove(id);
     }
+  }
+
+  Future<List<CollectionMembersEntry>> showMembers(String id) async {
+    return ref.watch(collectionsRepositoryProvider).showMembers(id);
   }
 
   void _update(List<CollectionEntry> Function(List<CollectionEntry>) change) {
