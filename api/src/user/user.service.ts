@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CollectionRole } from '../generated/prisma/enums';
 import { isPrismaError, PrismaErrorCode } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -38,7 +39,15 @@ export class UserService {
 
   async removeMe(userId: string): Promise<void> {
     try {
-      await this.prisma.user.delete({ where: { id: userId } });
+      // No ownership transfer yet: an owner's collections go with the account instead of being left ownerless.
+      await this.prisma.$transaction([
+        this.prisma.collection.deleteMany({
+          where: {
+            members: { some: { userId, role: CollectionRole.OWNER } },
+          },
+        }),
+        this.prisma.user.delete({ where: { id: userId } }),
+      ]);
     } catch (e) {
       throw this.mapNotFound(e);
     }
@@ -51,7 +60,7 @@ export class UserService {
   }
 }
 
-class UserNotFoundException extends NotFoundException {
+export class UserNotFoundException extends NotFoundException {
   constructor() {
     super('User not found');
   }

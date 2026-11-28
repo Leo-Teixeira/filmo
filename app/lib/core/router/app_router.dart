@@ -1,3 +1,4 @@
+import 'package:filmo/features/collections/presentation/collections_screen.dart';
 import 'package:filmo/features/library/presentation/library_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
@@ -65,6 +66,10 @@ GoRouter appRouter(Ref ref) {
         path: AppRoutes.titleDetailPattern,
         builder: (context, state) =>
             TitleDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.collections,
+        builder: (context, state) => const CollectionsScreen(),
       ),
     ],
   );

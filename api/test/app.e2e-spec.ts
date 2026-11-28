@@ -37,8 +37,6 @@ describe('Auth & /me (e2e)', () => {
 
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: createdEmails } } });
-    await prisma.household.deleteMany({ where: { name: 'e2e-household' } });
-    await prisma.title.deleteMany({ where: { provider: 'e2e' } });
     await app.close();
   });
 
@@ -68,46 +66,14 @@ describe('Auth & /me (e2e)', () => {
       .expect(200);
   });
 
-  it('deletes an account that added items, keeping the household items', async () => {
-    const email = uniqueEmail();
-    const auth = bearer(await register(email).expect(201));
-    const me = await request(app.getHttpServer())
-      .get('/me')
-      .set('Authorization', auth);
-    const userId = (me.body as { id: string }).id;
-
-    const title = await prisma.title.create({
-      data: {
-        provider: 'e2e',
-        externalId: randomUUID(),
-        type: 'MOVIE',
-        title: 'E2E',
-      },
-    });
-    const household = await prisma.household.create({
-      data: {
-        name: 'e2e-household',
-        inviteCode: randomUUID(),
-        collections: { create: { name: 'Watchlist' } },
-      },
-      include: { collections: true },
-    });
-    const collectionId = household.collections[0].id;
-    await prisma.collectionItem.create({
-      data: { collectionId, titleId: title.id, addedById: userId },
-    });
-
+  it('answers 404, not 500, to a token whose account was deleted', async () => {
+    const auth = bearer(await register(uniqueEmail()).expect(201));
     await request(app.getHttpServer())
       .delete('/me')
       .set('Authorization', auth)
       .expect(204);
 
-    const item = await prisma.collectionItem.findUnique({
-      where: { collectionId_titleId: { collectionId, titleId: title.id } },
-    });
-    expect(item?.addedById).toBeNull();
-
-    // Token still valid for up to 1h: the API must answer 404, not 500.
+    // Token still valid for up to 1h.
     await request(app.getHttpServer())
       .patch('/me')
       .set('Authorization', auth)

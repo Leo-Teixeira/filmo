@@ -8,6 +8,7 @@ import { LibraryModule } from './library/library.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { TitlesModule } from './titles/titles.module';
+import { CollectionsModule } from './collections/collections.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TitlesModule } from './titles/titles.module';
     UserModule,
     TitlesModule,
     LibraryModule,
+    CollectionsModule,
   ],
   controllers: [AppController],
   providers: [
