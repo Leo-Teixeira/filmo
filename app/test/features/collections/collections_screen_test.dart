@@ -157,4 +157,62 @@ void main() {
 
     expect(find.text('Chez Sam'), findsNothing);
   });
+
+  group('members dialog', () {
+    Future<void> openMembers(WidgetTester tester) async {
+      await tester.tap(find.byTooltip('Actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Voir les membres'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('lists every member once loaded, and closes', (tester) async {
+      await pumpScreen(tester, FakeCollectionsRepository([fakeCollection()]));
+
+      await openMembers(tester);
+
+      final dialog = find.byType(AlertDialog);
+      expect(dialog, findsOneWidget);
+      expect(
+        find.descendant(of: dialog, matching: find.text('Léo')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: dialog, matching: find.text('Sam')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('shows the error inside the dialog and retries', (
+      tester,
+    ) async {
+      final repo = FakeCollectionsRepository([fakeCollection()]);
+      await pumpScreen(tester, repo);
+
+      repo.failure = const ApiNotFound();
+      await openMembers(tester);
+
+      final dialog = find.byType(AlertDialog);
+      expect(
+        find.descendant(of: dialog, matching: find.text('Introuvable.')),
+        findsOneWidget,
+      );
+      expect(find.text('Sam'), findsNothing);
+
+      repo.failure = null;
+      await tester.tap(
+        find.descendant(of: dialog, matching: find.text('Réessayer')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: dialog, matching: find.text('Sam')),
+        findsOneWidget,
+      );
+    });
+  });
 }

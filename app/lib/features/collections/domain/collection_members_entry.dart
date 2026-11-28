@@ -1,4 +1,3 @@
-import 'package:filmo/features/auth/domain/user.dart';
 import 'package:filmo/features/collections/domain/collection_entry.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 

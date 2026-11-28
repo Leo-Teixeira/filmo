@@ -234,7 +234,7 @@ class _CollectionTile extends ConsumerWidget {
 }
 
 class _MembersDialog extends ConsumerWidget {
-  const _MembersDialog({super.key, required this.collectionId});
+  const _MembersDialog({required this.collectionId});
 
   final String collectionId;
 
@@ -256,18 +256,26 @@ class _MembersDialog extends ConsumerWidget {
           ],
         ],
       ),
-      error: (err, stackTrace) => _Message(
-        userMessage(err),
-        action: TextButton(
-          onPressed: response.isLoading
-              ? null
-              : () => ref.invalidate(
-                  collectionMembersControllerProvider(collectionId),
-                ),
-          child: const Text('Réessayer'),
-        ),
+      // _Message is a ListView sized for a full screen; a dialog needs content with an intrinsic size.
+      error: (err, stackTrace) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(userMessage(err), textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: response.isLoading
+                ? null
+                : () => ref.invalidate(
+                    collectionMembersControllerProvider(collectionId),
+                  ),
+            child: const Text('Réessayer'),
+          ),
+        ],
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const SizedBox(
+        height: 80,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
   }
 }
