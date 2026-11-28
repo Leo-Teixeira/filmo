@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:filmo/features/collections/domain/collection_members_entry.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/network/api_failure.dart';
@@ -59,6 +60,19 @@ class CollectionsRepository {
       if (e.response?.statusCode == 404) return;
       throw ApiFailure.fromDio(e);
     }
+  }
+
+  Future<List<CollectionMembersEntry>> showMembers(String collectionId) async {
+    final response = await _dio.get<List<dynamic>>(
+      '${_path(collectionId)}/members',
+    );
+
+    return response.data!
+        .map(
+          (member) =>
+              CollectionMembersEntry.fromJson(member as Map<String, dynamic>),
+        )
+        .toList();
   }
 }
 

@@ -1,3 +1,5 @@
+import 'package:filmo/features/collections/domain/collection_members_entry.dart';
+import 'package:filmo/features/collections/presentation/collection_members_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -126,13 +128,17 @@ class _CollectionTile extends ConsumerWidget {
       ),
       trailing: PopupMenuButton<_Action>(
         tooltip: 'Actions',
-        onSelected: (action) => _run(context, ref, action),
+        onSelected: (action) => _run(context, ref, action, collection),
         itemBuilder: (_) => [
           if (collection.inviteCode != null)
             const PopupMenuItem(
               value: _Action.copyCode,
               child: Text('Copier le code d\'invitation'),
             ),
+          const PopupMenuItem(
+            value: _Action.showMembers,
+            child: Text('Voir les membres'),
+          ),
           collection.isOwner
               ? const PopupMenuItem(
                   value: _Action.delete,
@@ -147,7 +153,12 @@ class _CollectionTile extends ConsumerWidget {
     );
   }
 
-  void _run(BuildContext context, WidgetRef ref, _Action action) {
+  void _run(
+    BuildContext context,
+    WidgetRef ref,
+    _Action action,
+    CollectionEntry collection,
+  ) {
     final controller = ref.read(myCollectionsControllerProvider.notifier);
     switch (action) {
       case _Action.copyCode:
@@ -164,6 +175,8 @@ class _CollectionTile extends ConsumerWidget {
           'Quitter « ${collection.name} » ?',
           () => controller.leave(collection.id),
         );
+      case _Action.showMembers:
+        _showMembers(context, collection.id);
     }
   }
 
@@ -202,6 +215,61 @@ class _CollectionTile extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
     }
   }
+
+  Future<void> _showMembers(BuildContext context, String collectionId) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Membres de la collection'),
+        content: _MembersDialog(collectionId: collectionId),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-enum _Action { copyCode, delete, leave }
+class _MembersDialog extends ConsumerWidget {
+  const _MembersDialog({super.key, required this.collectionId});
+
+  final String collectionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final response = ref.watch(
+      collectionMembersControllerProvider(collectionId),
+    );
+
+    return response.when(
+      data: (members) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (CollectionMembersEntry member in members) ...[
+            ListTile(
+              title: Text(member.user.displayName),
+              trailing: Text(member.role.name),
+            ),
+          ],
+        ],
+      ),
+      error: (err, stackTrace) => _Message(
+        userMessage(err),
+        action: TextButton(
+          onPressed: response.isLoading
+              ? null
+              : () => ref.invalidate(
+                  collectionMembersControllerProvider(collectionId),
+                ),
+          child: const Text('Réessayer'),
+        ),
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+enum _Action { copyCode, delete, leave, showMembers }
