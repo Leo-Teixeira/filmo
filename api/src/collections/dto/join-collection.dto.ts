@@ -6,5 +6,5 @@ export class JoinCollectionDto {
   @NormalizeInviteCode()
   @IsString()
   @Matches(INVITE_CODE_PATTERN, { message: 'inviteCode is invalid' })
-  inviteCode: string;
+  inviteCode!: string;
 }

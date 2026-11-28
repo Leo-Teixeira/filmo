@@ -5,5 +5,5 @@ export class CollectionNameDto {
   @Trim()
   @IsString()
   @Length(1, 80)
-  name: string;
+  name!: string;
 }
